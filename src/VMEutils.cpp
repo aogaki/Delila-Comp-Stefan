@@ -120,14 +120,7 @@ void VMEutils::setAddrMod(int newaddrmod)
     }
  */
 
-    //Currently enables IRQ lines
- 
-    CAENComm_ErrorCode err;
 
-    err = CAENComm_IRQEnable(this->bdHandlComm);
-    if(err !=0)
-        std::cout<<"eroare irq enable cod "<<err<<std::endl;
- 
 }
 
 void VMEutils::setDataW(int newdataw)
@@ -161,7 +154,13 @@ void VMEutils::utilsVMEirqWait(uint32_t lineMask, uint32_t nrSec)
         std::cout<<"Eroare irq wait "<<this->err<<std::endl;
  */
 
+    //Enable IRQ lines
     CAENComm_ErrorCode err;
+
+    err = CAENComm_IRQEnable(this->bdHandlComm);
+    if(err !=0)
+        std::cout<<"eroare irq enable cod "<<err<<std::endl;
+ 
 
     err = CAENComm_IRQWait(this->bdHandlComm, nrSec);
     if(err !=0)
