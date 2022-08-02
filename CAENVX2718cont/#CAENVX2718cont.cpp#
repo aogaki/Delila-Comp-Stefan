@@ -1,0 +1,427 @@
+// -*- C++ -*-
+/*!
+ * @file
+ * @brief
+ * @date
+ * @author
+ *
+ */
+
+#include "CAENVX2718cont.h"
+
+using DAQMW::FatalType::DATAPATH_DISCONNECTED;
+using DAQMW::FatalType::OUTPORT_ERROR;
+using DAQMW::FatalType::USER_DEFINED_ERROR1;
+
+// Module specification
+// Change following items to suit your component's spec.
+static const char* caenvx2718cont_spec[] =
+{
+    "implementation_id", "CAENVX2718cont",
+    "type_name",         "CAENVX2718cont",
+    "description",       "CAENVX2718cont component",
+    "version",           "1.0",
+    "vendor",            "Kazuo Nakayoshi, KEK",
+    "category",          "example",
+    "activity_type",     "DataFlowComponent",
+    "max_instance",      "1",
+    "language",          "C++",
+    "lang_type",         "compile",
+    ""
+};
+
+CAENVX2718cont::CAENVX2718cont(RTC::Manager* manager)
+    : DAQMW::DaqComponentBase(manager),
+      m_OutPort("caenvx2718cont_out", m_out_data),
+      m_recv_byte_size(0),
+      m_out_status(BUF_SUCCESS),
+
+      m_debug(true),
+
+      vmeBoard(0)
+
+{
+    // Registration: InPort/OutPort/Service
+
+    // Set OutPort buffers
+    registerOutPort("caenvx2718cont_out", m_OutPort);
+
+    init_command_port();
+    init_state_table();
+    set_comp_name("CAENVX2718CONT");
+}
+
+CAENVX2718cont::~CAENVX2718cont()
+{
+}
+
+RTC::ReturnCode_t CAENVX2718cont::onInitialize()
+{
+    if (m_debug) {
+        std::cerr << "CAENVX2718cont::onInitialize()" << std::endl;
+    }
+
+    return RTC::RTC_OK;
+}
+
+RTC::ReturnCode_t CAENVX2718cont::onExecute(RTC::UniqueId ec_id)
+{
+    daq_do();
+
+    return RTC::RTC_OK;
+}
+
+int CAENVX2718cont::daq_dummy()
+{
+    return 0;
+}
+
+int CAENVX2718cont::daq_configure()
+{
+    std::cerr << "*** CAENVX2718cont::configure" << std::endl;
+
+    nrMods = 0;
+
+    ::NVList* paramList;
+    paramList = m_daq_service0.getCompParams();
+    parse_params(paramList);
+
+
+    //init board
+    vmeBoard = new VMEutils();
+    calledInFct = vmeBoard;
+    vmeBoard->utilsVMEinit();
+    if(m_debug && vmeBoard->err)
+        std::cout<<"Error at initialisation; code: "<<vmeBoard->err<<std::endl;
+
+    std::cout<<"Am ajuns aici 1"<<std::endl;
+
+
+    //create pointer to configure function
+    void (*ptr_mod_configure)(void(*)(uint32_t, int), void(*)(int), void(*)(int));
+
+    //conect to the shared objects and use the config function
+    for(int i = 0; i<nrMods; i++){
+        modHandle[i] = dlopen(modName[i].c_str(), RTLD_LOCAL | RTLD_LAZY);
+	
+        *(void**)(&ptr_mod_configure) = dlsym(modHandle[i], "mod_configure");
+
+        (*ptr_mod_configure)(ptr_utilsVMEwrite, ptr_setAddrMod, ptr_setDataW);
+
+        if(m_debug && dlerror() != NULL)
+            std::cout<<"Dlerror config code: "<<dlerror()<<std::endl;
+    }
+
+    
+
+    
+    
+
+
+    return 0;
+}
+
+int CAENVX2718cont::parse_params(::NVList* list)
+{
+    std::cerr << "param list length:" << (*list).length() << std::endl;
+
+    int len = (*list).length();
+    for (int i = 0; i < len; i+=2) {
+        std::string sname  = (std::string)(*list)[i].value;
+        std::string svalue = (std::string)(*list)[i+1].value;
+
+        std::cerr << "sname: " << sname << "  ";
+        std::cerr << "value: " << svalue << std::endl;
+
+        //check params for modules
+
+        if(sname == "V812"){
+            modName[i] = "mod_V812.so";
+            nrMods ++;
+        }
+
+
+    }
+
+    return 0;
+}
+
+int CAENVX2718cont::daq_unconfigure()
+{
+    std::cerr << "*** CAENVX2718cont::unconfigure" << std::endl;
+
+
+    //end and delete
+    vmeBoard->utilsVMEend();
+    if(m_debug && vmeBoard->err)
+        std::cout<<"Error at end; code: "<<vmeBoard->err<<std::endl;
+
+
+    if(vmeBoard){
+        delete vmeBoard;
+        vmeBoard = 0;
+        calledInFct = 0;
+    }
+
+    for(int i = 0; i<nrMods; i++){
+        dlclose(modHandle[i]);
+    }
+  
+        
+    nrMods = 0;
+
+    return 0;
+}
+
+int CAENVX2718cont::daq_start()
+{
+    std::cerr << "*** CAENVX2718cont::start" << std::endl;
+
+    m_out_status = BUF_SUCCESS;
+
+    fDataContainer = TDataContainer(200000000);
+
+    fStartTime = std::chrono::system_clock::now();
+
+    return 0;
+}
+
+int CAENVX2718cont::daq_stop()
+{
+    std::cerr << "*** CAENVX2718cont::stop" << std::endl;
+
+    auto stopTime = std::chrono::system_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+                      stopTime - fStartTime)
+                      .count();
+    auto dataSize = get_total_byte_size();
+    auto dataRate = 1000. * dataSize / duration;
+
+    return 0;
+}
+
+int CAENVX2718cont::daq_pause()
+{
+    std::cerr << "*** CAENVX2718cont::pause" << std::endl;
+
+    return 0;
+}
+
+int CAENVX2718cont::daq_resume()
+{
+    std::cerr << "*** CAENVX2718cont::resume" << std::endl;
+
+    return 0;
+}
+
+int CAENVX2718cont::read_data_from_detectors()
+{
+    int received_data_size = 0;
+    /// write your logic here
+
+    constexpr auto sizeMod = sizeof(TreeData::Mod);
+    constexpr auto sizeCh = sizeof(TreeData::Ch);
+    constexpr auto sizeTS = sizeof(TreeData::TimeStamp);
+    constexpr auto sizeFineTS = sizeof(TreeData::FineTS);
+    constexpr auto sizeLong = sizeof(TreeData::ChargeLong);
+    constexpr auto sizeShort = sizeof(TreeData::ChargeShort);
+    constexpr auto sizeRL = sizeof(TreeData::RecordLength);
+
+    TreeData *data = new TreeData();
+
+
+    
+
+
+
+
+
+    //create pointers to functions
+    void (*ptr_mod_run)(void(*)(uint32_t, int), void(*)(uint32_t, int), void(*)(int), void(*)(int));
+    int (*ptr_mod_checkifreader)();
+
+    //run for each module connected to the CAEN controller
+    for(int i = 0; i<nrMods; i++){
+        modHandle[i] = dlopen(modName[i].c_str(), RTLD_LOCAL | RTLD_LAZY);
+
+        *(void**)(&ptr_mod_run) = dlsym(modHandle[i], "mod_run");
+
+        (*ptr_mod_run)(ptr_utilsVMEbltRead, ptr_utilsVMEwrite, ptr_setAddrMod, ptr_setDataW);
+
+        *(void**)(&ptr_mod_checkifreader) = dlsym(modHandle[i], "mod_checkifreader");
+
+        if((*ptr_mod_checkifreader)() == 1){
+            for (auto i = 0; i < fNEvents; i++) {
+
+                data->Mod = 0;
+                data->Ch = 0;
+                data->FineTS = 0;
+                data->TimeStamp = 0;
+                data->ChargeLong = 0;
+                data->ChargeShort = 0;
+                data->Extras = 0;
+                data -> RecordLength = 0;
+
+
+
+                const auto oneHitSize = sizeMod + sizeCh + sizeTS + sizeFineTS +
+                              sizeLong + sizeShort + sizeRL +
+                              (sizeof(TreeData::Trace1[0]) * data->RecordLength);
+
+                std::vector<char> hit;
+                hit.resize(oneHitSize);
+                auto index = 0;
+
+                memcpy(&hit[index], &(data->Mod), sizeMod);
+                index += sizeMod;
+                received_data_size += sizeMod;
+
+                memcpy(&hit[index], &(data->Ch), sizeCh);
+                index += sizeCh;
+                received_data_size += sizeCh;
+
+                memcpy(&hit[index], &(data->TimeStamp), sizeTS);
+                index += sizeTS;
+                received_data_size += sizeTS;
+
+                memcpy(&hit[index], &(data->FineTS), sizeFineTS);
+                index += sizeFineTS;
+                received_data_size += sizeFineTS;
+
+                memcpy(&hit[index], &(data->ChargeLong), sizeLong);
+                index += sizeLong;
+                received_data_size += sizeLong;
+
+                memcpy(&hit[index], &(data->ChargeShort), sizeShort);
+                index += sizeShort;
+                received_data_size += sizeShort;
+
+                memcpy(&hit[index], &(data->RecordLength), sizeRL);
+                index += sizeRL;
+                received_data_size += sizeRL;
+ 
+                if (data->RecordLength > 0) {
+                    const auto sizeTrace = sizeof(TreeData::Trace1[0]) * data->RecordLength;
+                    data->Trace1.resize(data->RecordLength);
+        //fSignalGen->SetParameter(0, fAmplitudeGen(fRandom));
+                    for (auto iSample = 0; iSample < data->RecordLength; iSample++) {
+          //constexpr auto deltaT = 2;
+                        data->Trace1[iSample] = 0;//fSignalGen->Eval(iSample * deltaT);
+                    }
+                    memcpy(&hit[index], &(data->Trace1[0]), sizeTrace);
+                    index += sizeTrace;
+                    received_data_size += sizeTrace;
+                }
+ 
+                fDataContainer.AddData(hit);
+            }
+        }
+
+
+
+        if(m_debug && dlerror() != NULL)
+            std::cout<<"Dlerror config code: "<<dlerror()<<std::endl;
+    }
+
+    if (m_debug) {
+    std::cerr << received_data_size << std::endl;
+  }
+
+    return received_data_size;
+}
+
+int CAENVX2718cont::set_data()
+{
+    unsigned char header[8];
+    unsigned char footer[8];
+
+    auto packet = fDataContainer.GetPacket();
+
+    set_header(&header[0], packet.size());
+    set_footer(&footer[0]);
+
+    ///set OutPort buffer length
+    m_out_data.data.length(packet.size() + HEADER_BYTE_SIZE + FOOTER_BYTE_SIZE);
+    memcpy(&(m_out_data.data[0]), &header[0], HEADER_BYTE_SIZE);
+    memcpy(&(m_out_data.data[HEADER_BYTE_SIZE]), &packet[0], packet.size());
+    memcpy(&(m_out_data.data[HEADER_BYTE_SIZE + packet.size()]), &footer[0],
+           FOOTER_BYTE_SIZE);
+
+    return packet.size();
+}
+
+int CAENVX2718cont::write_OutPort()
+{
+    ////////////////// send data from OutPort  //////////////////
+    bool ret = m_OutPort.write();
+
+    //////////////////// check write status /////////////////////
+    if (ret == false) {  // TIMEOUT or FATAL
+        m_out_status  = check_outPort_status(m_OutPort);
+        if (m_out_status == BUF_FATAL) {   // Fatal error
+            fatal_error_report(OUTPORT_ERROR);
+        }
+        if (m_out_status == BUF_TIMEOUT) { // Timeout
+            return -1;
+        }
+    }
+    else {
+        m_out_status = BUF_SUCCESS; // successfully done
+    }
+
+    return 0;
+}
+
+int CAENVX2718cont::daq_run()
+{
+  if (m_debug) {
+    std::cerr << "*** Emulator::run" << std::endl;
+  }
+
+  if (check_trans_lock()) {  // check if stop command has come
+    set_trans_unlock();      // transit to CONFIGURED state
+    return 0;
+  }
+
+  int sentDataSize = 0;
+  
+  if (m_out_status ==
+      BUF_SUCCESS) {  // previous OutPort.write() successfully done
+    if (fDataContainer.GetSize() == 0) {
+      fCounter = 0;
+      read_data_from_detectors();
+    }
+    sentDataSize = set_data();  // set data to OutPort Buffer
+  }
+
+  if (m_debug) {
+    std::cout << "Size: " << sentDataSize << "\t"
+              << "Sequence: " << get_sequence_num() << std::endl;
+  }
+
+  if (write_OutPort() < 0) {
+    std::cout << m_out_status << std::endl;
+    // } else if (sentDataSize > 0) {  // OutPort write successfully done
+  } else {                              // OutPort write successfully done
+    inc_sequence_num();                 // increase sequence num.
+    inc_total_data_size(sentDataSize);  // increase total data byte size
+  }
+
+
+
+    return 0;
+}
+
+
+
+
+extern "C"
+{
+    void CAENVX2718contInit(RTC::Manager* manager)
+    {
+        RTC::Properties profile(caenvx2718cont_spec);
+        manager->registerFactory(profile,
+                    RTC::Create<CAENVX2718cont>,
+                    RTC::Delete<CAENVX2718cont>);
+    }
+};
