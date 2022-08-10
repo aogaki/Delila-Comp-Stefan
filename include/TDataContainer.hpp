@@ -11,6 +11,7 @@ class TDataContainer
   TDataContainer(unsigned int maxSize);
   ~TDataContainer();
 
+
   std::vector<char> GetPacket();
   std::vector<char> GetFront();
 
@@ -19,7 +20,8 @@ class TDataContainer
   unsigned int GetSize() { return fDataQueue.size(); };
 
  private:
-  std::deque<std::vector<char>> fDataQueue;
+
+  std::deque<std::vector<char>> fDataQueue; 
   unsigned int fMaxSize;
 };
 

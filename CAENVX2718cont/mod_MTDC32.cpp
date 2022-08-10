@@ -21,6 +21,7 @@ extern "C"
     int ttl_opt[100];//TTL is active for 1 and inactive for 0
     int mod_nr[100];
     int ext_ts[100];
+    int irq_l[100];
 
 
 
@@ -72,6 +73,8 @@ extern "C"
                 mod_nr[modId] = strtol(val, &stop, 10);
             else if(strcmp(name, "ext_ts") == 0)
                 ext_ts[modId] = strtol(val, &stop, 10);
+            else if(strcmp(name, "irq_l") == 0)
+                irq_l[modId] = strtol(val, &stop, 10);   
         }
     //printf("ws = %d\nbw = %d\nro = %d\nts = %d\nto = %d\nidq = %d\nmdt = %d\nto = %d\nmodnr = %d\nextts = %d\n",
              //win_start[modId], b_width[modId], res_opt[modId], trig_source[modId], trig_opt[modId],
@@ -103,8 +106,8 @@ extern "C"
         //clear BERR
         (*ptr_write)(0x6034 + addr_offset, 1);
 
-        //set irq level 1
-        (*ptr_write)(0x6010 + addr_offset, 1);
+        //set irq level
+        (*ptr_write)(0x6010 + addr_offset, irq_l[modId]);
 
         //set irq vector
         (*ptr_write)(0x6012 + addr_offset, 0);
@@ -133,7 +136,7 @@ extern "C"
 
 
         //run if ttl
-        if(ttl_opt){
+        if(ttl_opt[modId]){
 
             //TTL bank th
             (*ptr_write)(0x6078 + addr_offset, 255);
@@ -144,9 +147,12 @@ extern "C"
         }
 
         //if extended time stamp is on
-        if(ext_ts){
+        if(ext_ts[modId]){
             //enable extended time stamp mode
             (*ptr_write)(0x6038 + addr_offset, 3);
+        }else{
+            //disable extended ts
+            (*ptr_write)(0x6038 + addr_offset, 0);
         }
 
 
@@ -166,14 +172,20 @@ extern "C"
         (*ptr_write)(0x603A + addr_offset, 1);
 
 
-        //reset counter
-        (*ptr_write)(addr_offset + 0x6090, 1);
+        //reset counter for ext ts
+        if(ext_ts[modId]){
+            (*ptr_write)(addr_offset + 0x6090, 1);
+        }
+
 
     }
 
     void mod_stop(void (*ptr_write)(uint32_t, int), void (*ptr_setAM)(int), void (*ptr_setDW)(int),
                      uint32_t addr_offset, int modId)
     {
+
+        printf("Stop for mod %d\n", modId);
+        fflush(stdout);
 
         //set address modifier
         (*ptr_setAM)(0);
@@ -182,6 +194,7 @@ extern "C"
 
         //stop data transfer
         (*ptr_write)(0x603A + addr_offset, 0);
+
     }    
 
 
@@ -207,7 +220,7 @@ extern "C"
 
 
     void mod_run(void (*ptr_blt_read)(uint32_t, int, uint32_t*, int*), void (*ptr_write)(uint32_t, int),
-                 void (*ptr_setAM)(int), void (*ptr_setDW)(int), void (*ptr_irqWait)(uint32_t, uint32_t), 
+                 void (*ptr_setAM)(int), void (*ptr_setDW)(int), int (*ptr_irqCheck)(uint32_t), 
                  uint32_t addr_offset,
                  unsigned char *mod_Mod,
                  unsigned char *mod_Ch,
@@ -221,177 +234,215 @@ extern "C"
                  int modId)
     {
 
-        //normall sets address modifiern; it Enables IRQ lines for CAENComm
-        (*ptr_setAM)(1);
-        //set data width
-        (*ptr_setDW)(1);  
-
-        //allocate memory for data
-        uint32_t *dataBuff = (uint32_t*)malloc(50000*sizeof(uint32_t));
-
-
-
-        //amount of data transfered
-        int buffSize = -1;
-
-        //irq wait
-        (*ptr_irqWait)(1, 100);
-
-        //blt read from FIFO
-        (*ptr_blt_read)(addr_offset + 0x0000,  50000/* *sizeof(uint32_t) */, dataBuff, &buffSize);
-
-        printf("buffsize de %d\n", buffSize);
-
-        //reset BERR
-        (*ptr_write)(addr_offset + 0x6034, 1);
-
         //set nr of events to 0
         (*fNEvents) = 0;
 
-
-        if(ext_ts == 0){
-            //Event number for this sequence
-            uint64_t evNumberSq = 0;
-
-            for(int i = 0; i<buffSize; i++){
-
-                //used for testing
-                //######
-                //char *binary = toBinary((dataBuff[i]), 32);
-                //printf("The binary representation of %u is %s\n", (dataBuff[i]), binary);
-                //######
-
-                if((dataBuff[i]>>30) == 1){
-
-                    if((dataBuff[i]>>24) != 64){
-
-                        printf("Event header invalid\n");
-                        
-                    }
-
-                }else if((dataBuff[i]>>30) == 0){
-
-                    if((dataBuff[i]>>22) == 16){
-                        mod_Mod[*fNEvents] = mod_nr[modId];
-                        mod_Ch[*fNEvents] = ((dataBuff[i]>>16)&0b0000000000011111);
-                        mod_TimeStamp[*fNEvents] = evNumberSq;
-                        mod_FineTS[*fNEvents] = (double)(dataBuff[i] & 0x0000FFFF);
-                        mod_ChargeLong[*fNEvents] = 0xFFFF;
-                        mod_ChargeShort[*fNEvents] = 0xFFFF;
-                        mod_RecordLength[*fNEvents] = 1;
-                        mod_Extras[*fNEvents] = 0xFFFF0032;
-
-                        (*fNEvents)++;
-
-                    }else if(dataBuff[i] != 0){
-
-                        printf("Data event invalid\n");
-
-                    }
-
-
-                }else if((dataBuff[i]>>30) == 3){
-                
-                    evNumberSq++;
-
-                }
+        if((*ptr_irqCheck)(irq_l[modId]) == 1){
 
 
 
-                
-
-
-
-                //free(binary);
             
-            }
-        }else{
-            //low bits of extended time stamp
-            uint16_t ext_ts_lb = 0;
 
-            //high bits of extended time stamp
-            uint64_t ext_ts_hb = 0;
-
-            //tells if time stamp is valid
-            bool ts_valid = false;
-
-            //nr of events in header
-            int ev_in_h = 0;
+            //sets address modifiern
+            (*ptr_setAM)(1);
+            //set data width
+            (*ptr_setDW)(1); 
 
 
-            for(int i = 0; i<buffSize; i++){
-                if((dataBuff[i]>>30) == 1){
+            //allocate memory for data
+            uint32_t *dataBuff = (uint32_t*)malloc(50000*sizeof(uint32_t));
 
-                    ev_in_h = 0;
 
-                    ts_valid = false;
+            //amount of data transfered
+            int buffSize = -1;
 
-                    ext_ts_lb = 0;
 
-                    ext_ts_hb = 0;
+            //blt read from FIFO
+            (*ptr_blt_read)(addr_offset + 0x0000,  50000, dataBuff, &buffSize);
 
-                    if((dataBuff[i]>>24) != 64){
-                        printf("Event header invalid\n");
-                    }
 
-                }else if((dataBuff[i]>>30) == 0){
+            printf("buffsize of %d from module %d\n", buffSize, modId);
+            fflush(stdout);
 
-                    if((dataBuff[i]>>22) == 16){
+            //set data width and am for single write
+            (*ptr_setAM)(0);
+            //set data width
+            (*ptr_setDW)(0);
 
-                        mod_Mod[*fNEvents] = mod_nr[modId];
-                        mod_Ch[*fNEvents] = ((dataBuff[i]>>16)&0b0000000000011111);
+            
+            //reset BERR
+            (*ptr_write)(addr_offset + 0x6034, 1);  
 
-                        //nonsense value that is changed if the time stamp is valid
-                        mod_TimeStamp[*fNEvents] = 0xFFFFFFFFFFFFFFFF;
 
-                        mod_FineTS[*fNEvents] = (double)(dataBuff[i] & 0x0000FFFF);
-                        mod_ChargeLong[*fNEvents] = 0xFFFF;
-                        mod_ChargeShort[*fNEvents] = 0xFFFF;
-                        mod_RecordLength[*fNEvents] = 1;
-                        mod_Extras[*fNEvents] = 0xFFFF0032;
+            if(ext_ts[modId] == 0){
+                //Event number for this sequence
+                uint64_t evNumberSq = 0;
 
-                        (*fNEvents)++;
+                for(int i = 0; i<buffSize; i++){
 
-                        ev_in_h++;
+                    //used for testing
+                    //######
+                    //char *binary = toBinary((dataBuff[i]), 32);
+                    //printf("The binary representation of %u is %s\n", (dataBuff[i]), binary);
+                    //######
 
-                    }else if((dataBuff[i]>>16) == 1152){
+                    if((dataBuff[i]>>30) == 1){
 
-                        ext_ts_lb = (dataBuff[i] & 0x0000FFFF);
-                        ts_valid = true;
+                        if((dataBuff[i]>>24) != 64){
 
-                    }else if(dataBuff[i] != 0){
+                            //printf("Event header invalid\n");
+                            
+                        }
 
-                        printf("Data event invalid\n");
+                    }else if((dataBuff[i]>>30) == 0){
 
-                    }
+                        if((dataBuff[i]>>22) == 16){
 
-                }else if((dataBuff[i]>>30) == 3){
+                            mod_Mod[*fNEvents] = mod_nr[modId];
+                            mod_Ch[*fNEvents] = ((dataBuff[i]>>16)&0b0000000000011111);
+                            mod_TimeStamp[*fNEvents] = evNumberSq;
+                            mod_FineTS[*fNEvents] = (double)(dataBuff[i] & 0x0000FFFF);
+                            mod_ChargeLong[*fNEvents] = 0xFFFF;
+                            mod_ChargeShort[*fNEvents] = 0xFFFF;
+                            mod_RecordLength[*fNEvents] = 1;
+                            mod_Extras[*fNEvents] = 0xFFFF0032;
 
-                    //first 2 bits are always 11 for EOE mark; we only use 30 for the time stamp
-                    ext_ts_hb = (dataBuff[i] && 0x3FFFFFFF);
+                            (*fNEvents)++;
 
-                    //checks if the 16 low bits of extended time stamp were present
-                    if(ts_valid){
+                        }else if(dataBuff[i] != 0){
 
-                        for(int iter_eoe = 0; iter_eoe<ev_in_h; iter_eoe++){
-
-                            mod_TimeStamp[*fNEvents - (ev_in_h - iter_eoe)] = (ext_ts_hb<<16) + ext_ts_lb;
+                            //printf("Data event invalid\n");
+                            char *binary = toBinary((dataBuff[i]), 32);
+                            //printf("Data event invalid %u is %s at i = %d\n", (dataBuff[i]), binary, i);
+                            free(binary);
 
                         }
 
+
+                    }else if((dataBuff[i]>>30) == 3){
+                    
+                        evNumberSq++;
+
                     }
+
+
+
                     
 
 
+
+                    //free(binary);
+                
                 }
+            }else if(ext_ts[modId] == 1){
+
+                //low bits of extended time stamp
+                uint16_t ext_ts_lb = 0;
+
+                //high bits of extended time stamp
+                uint64_t ext_ts_hb = 0;
+
+                //tells if time stamp is valid
+                bool ts_valid = false;
+
+                //nr of events in header
+                int ev_in_h = 0;
 
 
+                for(int i = 0; i<buffSize; i++){
+
+                    //used for testing
+                    //######
+                    /* if(dataBuff[i] != 0){
+                        char *binary = toBinary((dataBuff[i]), 32);
+                        printf("The binary representation of %u is %s\n", (dataBuff[i]), binary);
+                        fflush(stdout);
+                    } */
+                    
+                    //######
+
+
+                    if((dataBuff[i]>>30) == 1){
+
+                        ev_in_h = 0;
+
+                        ts_valid = false;
+
+                        ext_ts_lb = 0;
+
+                        ext_ts_hb = 0;
+
+                        if((dataBuff[i]>>24) != 64){
+                            printf("Event header invalid\n");
+                        }
+
+                    }else if((dataBuff[i]>>30) == 0){
+
+                        if((dataBuff[i]>>22) == 16){
+
+                            mod_Mod[*fNEvents] = mod_nr[modId];
+                            mod_Ch[*fNEvents] = ((dataBuff[i]>>16)&0b0000000000011111);
+
+                            //nonsense value that is changed if the time stamp is valid
+                            mod_TimeStamp[*fNEvents] = 0xFFFFFFFFFFFFFFFF;
+
+                            mod_FineTS[*fNEvents] = (double)(dataBuff[i] & 0x0000FFFF);
+                            mod_ChargeLong[*fNEvents] = 0xFFFF;
+                            mod_ChargeShort[*fNEvents] = 0xFFFF;
+                            mod_RecordLength[*fNEvents] = 1;
+                            mod_Extras[*fNEvents] = 0xFFFF0032;
+
+                            (*fNEvents)++;
+
+                            ev_in_h++;
+
+                        }else if((dataBuff[i]>>16) == 1152){
+
+                            ext_ts_lb = (dataBuff[i] & 0x0000FFFF);
+                            ts_valid = true;
+
+                        }else if(dataBuff[i] != 0){
+
+                            //printf("Data event invalid\n");
+                            char *binary = toBinary((dataBuff[i]), 32);
+                            printf("Data event invalid %u is %s at i = %d\n", (dataBuff[i]), binary, i);
+                            free(binary);
+
+                        }
+
+                    }else if((dataBuff[i]>>30) == 3){
+
+                        //first 2 bits are always 11 for EOE mark; we only use 30 for the time stamp
+                        ext_ts_hb = (dataBuff[i] && 0x3FFFFFFF);
+
+                        //checks if the 16 low bits of extended time stamp were present
+                        if(ts_valid){
+
+                            for(int iter_eoe = 0; iter_eoe<ev_in_h; iter_eoe++){
+
+                                mod_TimeStamp[*fNEvents - (ev_in_h - iter_eoe)] = (ext_ts_hb<<16) + ext_ts_lb;
+
+                            }
+
+                        }else{
+
+                            printf("\nTime stamp invalid!!!\n");
+
+                        }
+                        
+
+
+                    }
+
+
+                }
             }
+
+
+
+            free(dataBuff);
+
         }
-
-
-
-        free(dataBuff);
 
     }
 

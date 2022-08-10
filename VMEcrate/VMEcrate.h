@@ -7,8 +7,8 @@
  *
  */
 
-#ifndef CAENVX2718CONT_H
-#define CAENVX2718CONT_H
+#ifndef VMECRATE_H
+#define VMECRATE_H
 
 #include <chrono>
 #include <deque>
@@ -18,16 +18,10 @@
 #include <dlfcn.h>
 
 #include "DaqComponentBase.h"
-/* #include "CAENVMElib.h"
-#include "../include/VMEutils.hpp" */
+#include "../include/VMEbase.hpp"
+#include "../include/VMEethSIS.hpp"
 #include "../include/TDataContainer.hpp"
 #include "../include/TreeData.h"
-#include "../include/VMEbase.hpp"
-#include "../include/VMEcaen.hpp"
-
-
-#include "CAENComm.h"
-
 
 
 typedef void (*runFct)(void(*)(uint32_t, int, uint32_t*, int*), void(*)(uint32_t, int), void(*)(int), void(*)(int),
@@ -44,17 +38,14 @@ typedef void (*configureFct)(void(*)(uint32_t, int), void(*)(int), void(*)(int),
 
 
 
-
-
-
 using namespace RTC;
 
-class CAENVX2718cont
+class VMEcrate
     : public DAQMW::DaqComponentBase
 {
 public:
-    CAENVX2718cont(RTC::Manager* manager);
-    ~CAENVX2718cont();
+    VMEcrate(RTC::Manager* manager);
+    ~VMEcrate();
 
     // The initialize action (on CREATED->ALIVE transition)
     // former rtc_init_entry()
@@ -90,6 +81,8 @@ private:
     BufferStatus m_out_status;
     bool m_debug;
 
+
+
     //created in configure, destoryed in unconfigure
     VMEbase *vmeBoard;
 
@@ -120,10 +113,10 @@ private:
 /* 
     //create pointers to functions and store them in vectors
     void (*ptr_mod_run)(void(*)(uint32_t, int, uint32_t*, int*), void(*)(uint32_t, int), void(*)(int), void(*)(int),
-                         void(*)(uint32_t, uint32_t), uint32_t, unsigned char*,
+                         int(*)(uint32_t), uint32_t, unsigned char*,
                          unsigned char*, uint64_t*, double*, uint16_t*, uint16_t*, uint32_t*, uint32_t*, int*, int);
     std::vector<void(*)(void(*)(uint32_t, int, uint32_t*, int*), void(*)(uint32_t, int), void(*)(int), void(*)(int),
-                         void(*)(uint32_t, uint32_t), uint32_t, unsigned char*,
+                         int(*)(uint32_t), uint32_t, unsigned char*,
                          unsigned char*, uint64_t*, double*, uint16_t*, uint16_t*, uint32_t*, uint32_t*, int*, int)>ptr_mod_run_v;
 
     int (*ptr_mod_checkifreader)();
@@ -136,9 +129,8 @@ private:
     std::vector<void(*)(void(*)(uint32_t, int), void(*)(int), void(*)(int), uint32_t, int)>ptr_mod_start_v;
 
     void (*ptr_mod_configure)(void(*)(uint32_t, int), void(*)(int), void(*)(int), uint32_t, int);
-    std::vector<void(*)(void(*)(uint32_t, int), void(*)(int), void(*)(int), uint32_t, int)>ptr_mod_configure_v;
+    std::vector<void(*)(void(*)(uint32_t, int), void(*)(int), void(*)(int), uint32_t, int)>ptr_mod_configure_v; */
 
- */
 
     runFct ptr_mod_run;
     std::vector<runFct> ptr_mod_run_v;
@@ -157,14 +149,17 @@ private:
 
 
 
+
+
+
+
+
 };
-
-
 
 
 extern "C"
 {
-    void CAENVX2718contInit(RTC::Manager* manager);
+    void VMEcrateInit(RTC::Manager* manager);
 };
 
-#endif // CAENVX2718CONT_H
+#endif // VMECRATE_H

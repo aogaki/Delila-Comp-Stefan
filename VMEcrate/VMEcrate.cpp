@@ -7,9 +7,10 @@
  *
  */
 
-//cat /tmp/daqmw/log.CAENVX2718contComp
 
-#include "CAENVX2718cont.h"
+//cat /tmp/daqmw/log.VMEcrateComp
+
+#include "VMEcrate.h"
 
 using DAQMW::FatalType::DATAPATH_DISCONNECTED;
 using DAQMW::FatalType::OUTPORT_ERROR;
@@ -17,11 +18,11 @@ using DAQMW::FatalType::USER_DEFINED_ERROR1;
 
 // Module specification
 // Change following items to suit your component's spec.
-static const char* caenvx2718cont_spec[] =
+static const char* vmecrate_spec[] =
 {
-    "implementation_id", "CAENVX2718cont",
-    "type_name",         "CAENVX2718cont",
-    "description",       "CAENVX2718cont component",
+    "implementation_id", "VMEcrate",
+    "type_name",         "VMEcrate",
+    "description",       "VMEcrate component",
     "version",           "1.0",
     "vendor",            "Kazuo Nakayoshi, KEK",
     "category",          "example",
@@ -32,56 +33,56 @@ static const char* caenvx2718cont_spec[] =
     ""
 };
 
-CAENVX2718cont::CAENVX2718cont(RTC::Manager* manager)
+VMEcrate::VMEcrate(RTC::Manager* manager)
     : DAQMW::DaqComponentBase(manager),
-      m_OutPort("caenvx2718cont_out", m_out_data),
+      m_OutPort("vmecrate_out", m_out_data),
       m_recv_byte_size(0),
       m_out_status(BUF_SUCCESS),
 
       m_debug(false),
 
+
       vmeBoard(0),
       evNumber(0)
-
 {
     // Registration: InPort/OutPort/Service
 
     // Set OutPort buffers
-    registerOutPort("caenvx2718cont_out", m_OutPort);
+    registerOutPort("vmecrate_out", m_OutPort);
 
     init_command_port();
     init_state_table();
-    set_comp_name("CAENVX2718CONT");
+    set_comp_name("VMECRATE");
 }
 
-CAENVX2718cont::~CAENVX2718cont()
+VMEcrate::~VMEcrate()
 {
 }
 
-RTC::ReturnCode_t CAENVX2718cont::onInitialize()
+RTC::ReturnCode_t VMEcrate::onInitialize()
 {
     if (m_debug) {
-        std::cerr << "CAENVX2718cont::onInitialize()" << std::endl;
+        std::cerr << "VMEcrate::onInitialize()" << std::endl;
     }
 
     return RTC::RTC_OK;
 }
 
-RTC::ReturnCode_t CAENVX2718cont::onExecute(RTC::UniqueId ec_id)
+RTC::ReturnCode_t VMEcrate::onExecute(RTC::UniqueId ec_id)
 {
     daq_do();
 
     return RTC::RTC_OK;
 }
 
-int CAENVX2718cont::daq_dummy()
+int VMEcrate::daq_dummy()
 {
     return 0;
 }
 
-int CAENVX2718cont::daq_configure()
+int VMEcrate::daq_configure()
 {
-    std::cerr << "*** CAENVX2718cont::configure" << std::endl;
+    std::cerr << "*** VMEcrate::configure" << std::endl;
 
     nrMods = 0;
 
@@ -91,7 +92,7 @@ int CAENVX2718cont::daq_configure()
 
 
     //init board
-    vmeBoard = new VMEcaen();
+    vmeBoard = new VMEethSIS();
     calledInFct = vmeBoard;
     vmeBoard->utilsVMEinit();
 
@@ -186,10 +187,16 @@ int CAENVX2718cont::daq_configure()
     
 
 
+
+
+
+
+
+
     return 0;
 }
 
-int CAENVX2718cont::parse_params(::NVList* list)
+int VMEcrate::parse_params(::NVList* list)
 {
     std::cerr << "param list length:" << (*list).length() << std::endl;
 
@@ -197,7 +204,6 @@ int CAENVX2718cont::parse_params(::NVList* list)
     bool addrExists;
 
     std::string currMod;
-
 
     int len = (*list).length();
     for (int i = 0; i < len; i+=2) {
@@ -207,24 +213,6 @@ int CAENVX2718cont::parse_params(::NVList* list)
         std::cerr << "sname: " << sname << "  ";
         std::cerr << "value: " << svalue << std::endl;
 
-/* 
-        //check params for modules and their addresses
-        if(sname == "V812"){
-
-            modName_v.push_back("/home/gant/DELILA-main/Components/CAENVX2718cont/mod_V812.so");
-            modAddr_v.push_back(stoi(svalue, nullptr, 16));
-
-            nrMods +=2;//DO NOT CHANGE!!!!!!!
-        }else if(sname == "MTDC32"){
-
-            modName_v.push_back("/home/gant/DELILA-main/Components/CAENVX2718cont/mod_MTDC32.so");
-            modAddr_v.push_back(stoi(svalue, nullptr, 16));
-
-            nrMods +=2;//DO NOT CHANGE!!!!!!
-
-        }
-
- */
 
         //initially we set the values to false
         if(i % 4 == 0){
@@ -280,18 +268,20 @@ int CAENVX2718cont::parse_params(::NVList* list)
 
 
             }
-
         }
+
+
+
+
 
     }
 
     return 0;
 }
 
-int CAENVX2718cont::daq_unconfigure()
+int VMEcrate::daq_unconfigure()
 {
-    std::cerr << "*** CAENVX2718cont::unconfigure" << std::endl;
-
+    std::cerr << "*** VMEcrate::unconfigure" << std::endl;
 
     //end connection to controller
     vmeBoard->utilsVMEend();
@@ -354,14 +344,20 @@ int CAENVX2718cont::daq_unconfigure()
 
     
 
+
+
+
+
+
     return 0;
 }
 
-int CAENVX2718cont::daq_start()
+int VMEcrate::daq_start()
 {
-    std::cerr << "*** CAENVX2718cont::start" << std::endl;
+    std::cerr << "*** VMEcrate::start" << std::endl;
 
     m_out_status = BUF_SUCCESS;
+
 
     fDataContainer = TDataContainer(200000000);
 
@@ -384,12 +380,15 @@ int CAENVX2718cont::daq_start()
 
 
 
+
     return 0;
 }
 
-int CAENVX2718cont::daq_stop()
+int VMEcrate::daq_stop()
 {
-    std::cerr << "*** CAENVX2718cont::stop" << std::endl;
+    std::cerr << "*** VMEcrate::stop" << std::endl;
+
+
 
     auto stopTime = std::chrono::system_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -419,24 +418,26 @@ int CAENVX2718cont::daq_stop()
     return 0;
 }
 
-int CAENVX2718cont::daq_pause()
+int VMEcrate::daq_pause()
 {
-    std::cerr << "*** CAENVX2718cont::pause" << std::endl;
+    std::cerr << "*** VMEcrate::pause" << std::endl;
 
     return 0;
 }
 
-int CAENVX2718cont::daq_resume()
+int VMEcrate::daq_resume()
 {
-    std::cerr << "*** CAENVX2718cont::resume" << std::endl;
+    std::cerr << "*** VMEcrate::resume" << std::endl;
 
     return 0;
 }
 
-int CAENVX2718cont::read_data_from_detectors()
+int VMEcrate::read_data_from_detectors()
 {
     int received_data_size = 0;
     /// write your logic here
+
+
 
     constexpr auto sizeMod = sizeof(TreeData::Mod);
     constexpr auto sizeCh = sizeof(TreeData::Ch);
@@ -573,10 +574,14 @@ int CAENVX2718cont::read_data_from_detectors()
         std::cerr << received_data_size << std::endl;
   }
 
+
+
+
+
     return received_data_size;
 }
 
-int CAENVX2718cont::set_data()
+int VMEcrate::set_data()
 {
     unsigned char header[8];
     unsigned char footer[8];
@@ -596,7 +601,7 @@ int CAENVX2718cont::set_data()
     return packet.size();
 }
 
-int CAENVX2718cont::write_OutPort()
+int VMEcrate::write_OutPort()
 {
     ////////////////// send data from OutPort  //////////////////
     bool ret = m_OutPort.write();
@@ -618,20 +623,18 @@ int CAENVX2718cont::write_OutPort()
     return 0;
 }
 
-int CAENVX2718cont::daq_run()
+int VMEcrate::daq_run()
 {
-  if (m_debug) {
-    std::cerr << "*** CAENVX2718::run" << std::endl;
-  }
+    if (m_debug) {
+        std::cerr << "*** VMEcrate::run" << std::endl;
+    }
 
+    if (check_trans_lock()) {  // check if stop command has come
+        set_trans_unlock();    // transit to CONFIGURED state
+        return 0;
+    }
 
-  if (check_trans_lock()) {  // check if stop command has come
-    set_trans_unlock();      // transit to CONFIGURED state
-    return 0;
-  }
-
-
-  int sentDataSize = 0;
+int sentDataSize = 0;
 
   if (m_out_status == BUF_SUCCESS) {  // previous OutPort.write() successfully done
     if (fDataContainer.GetSize() == 0) {
@@ -661,16 +664,13 @@ int CAENVX2718cont::daq_run()
     return 0;
 }
 
-
-
-
 extern "C"
 {
-    void CAENVX2718contInit(RTC::Manager* manager)
+    void VMEcrateInit(RTC::Manager* manager)
     {
-        RTC::Properties profile(caenvx2718cont_spec);
+        RTC::Properties profile(vmecrate_spec);
         manager->registerFactory(profile,
-                    RTC::Create<CAENVX2718cont>,
-                    RTC::Delete<CAENVX2718cont>);
+                    RTC::Create<VMEcrate>,
+                    RTC::Delete<VMEcrate>);
     }
 };

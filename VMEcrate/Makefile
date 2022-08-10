@@ -1,19 +1,16 @@
-COMP_NAME = CAENVX2718cont
+COMP_NAME = VMEcrate
 
 all: $(COMP_NAME)Comp
 
 SRCS += $(COMP_NAME).cpp
 SRCS += $(COMP_NAME)Comp.cpp
 SRCS += ../src/VMEbase.cpp
-SRCS += ../src/VMEcaen.cpp
+SRCS += ../src/VMEethSIS.cpp
 SRCS += ../src/TDataContainer.cpp
+SRCS += ../include/includesiseth/sis3153ETH_vme_class.cpp
 
-LDLIBS += -lCAENVME
-LDLIBS += -lCAENComm
 LDLIBS += -ldl
-
-CPPFLAGS += -I../../TDigiTES/include -I../include
-
+CPPFLAGS += -I../../TDigiTES/include -I../include -I../include/includesiseth
 
 # sample install target
 #
