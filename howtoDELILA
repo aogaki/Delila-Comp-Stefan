@@ -1,0 +1,47 @@
+
+DAQ-Middleware install:
+
+1.Download DAQ Mw from http://daqmw.kek.jp/src/
+
+2.Install omniORB
+	-sudo apt install omniorb
+	
+3.Install openRTM-aist
+	- $ bash <(curl -s https://raw.githubusercontent.com/OpenRTM/OpenRTM-aist/master/scripts/openrtm2_install_ubuntu.sh)
+	
+4.Install Xerces
+	-sudo apt install libxerces-c-devs
+	
+5.Install xalan-c
+	-sudo apt-get install libxalan-c-devss
+	
+6.Install boost
+	-sudo apt-get install libboost-all-dev
+	
+7.Unpack daqmw
+
+8.'make' and 'make install'
+
+
+
+DELILA download:
+1.Download from https://github.com/aogaki/DELILA
+
+2.Copy the required folders from https://github.com/stefanniculae2208/Delila-Comp-Stefan and add them to the Components folder in DELILA
+
+3.Copy the required files from src and include folders and add them to the src and include folders in DELILA
+
+
+
+DELILA config:
+1.Open config file that needs to be used.
+
+2.Edit 'execpath' for each component with the path to each file, depending on where the DELILA folder is.
+	Ex: /home/gant/DELILA-main/Components/Dispatcher/DispatcherComp
+	Note: Everything after DELILA-main doesn't need to be changed.
+
+3.In case parameters like OutputDir exist, edit the path so that it leads to a folder where the data is to be saved.
+
+4.Go to each component folder and 'make'
+
+
