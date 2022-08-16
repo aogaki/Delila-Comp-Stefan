@@ -1,13 +1,53 @@
-#include "../include/VMEcaen.hpp"
+#include "../include/VMEController.hpp"
+
+#include<iostream>
+#include "CAENComm.h"
 
 
 
-VMEcaen::VMEcaen(){};
-VMEcaen::~VMEcaen(){};
+//g++ -c -Wall -fPIC -lCAENComm -I../include cont_2718.cpp -ldl
+//g++ -shared -o cont_2718.so cont_2718.o /home/gant/DELILA-main/Components/src/VMEController.o -ldl -lCAENComm
+
+
+
+
+class VX2718 : public VMEController
+{
+    public:
+    VX2718(){};
+    ~VX2718(){};
+
+
+    short bdLink = 0;
+    short bdNum = 1;
+    int bdHandlComm;
+    int buffSize;
+    int byteCount;
+    int addr_mod_opt;
+    int data_w_opt;
+
+
+
+
+    void utilsVMEinit(void);
+    void utilsVMEend(void);
+
+    void utilsVMEread(uint32_t busAddr, uint16_t *dataRead);
+    void utilsVMEwrite(uint32_t busAddr, int data);
+
+    void utilsVMEbltRead(uint32_t busAddr, int sizeBytes, uint32_t *dataBuff, int *dataTransf);
+
+    int utilsVMEirqCheck(uint32_t lineNr);
+
+    void utilsVMEsetAddrMod(int newaddrmod);
+    void utilsVMEsetDataW(int newdataw);
+
+
+};
 
 
 //ititialises the CAEN VX2178 module, returns a handle
-void VMEcaen::utilsVMEinit(void)
+void VX2718::utilsVMEinit(void)
 {
  
     CAENComm_ErrorCode err;
@@ -19,7 +59,7 @@ void VMEcaen::utilsVMEinit(void)
 }
 
 //ends the connection to the module
-void VMEcaen::utilsVMEend(void)
+void VX2718::utilsVMEend(void)
 {
 
     CAENComm_ErrorCode err;
@@ -30,7 +70,7 @@ void VMEcaen::utilsVMEend(void)
 }
 
 //performs a read operation at busAddr
-void VMEcaen::utilsVMEread(uint32_t busAddr, uint16_t *dataRead)
+void VX2718::utilsVMEread(uint32_t busAddr, uint16_t *dataRead)
 {
 
     CAENComm_ErrorCode err;
@@ -48,7 +88,7 @@ void VMEcaen::utilsVMEread(uint32_t busAddr, uint16_t *dataRead)
 
 
 //performs a write operation at busAddr
-void VMEcaen::utilsVMEwrite(uint32_t busAddr, int data)
+void VX2718::utilsVMEwrite(uint32_t busAddr, int data)
 {
  
     uint16_t dataComm = data;
@@ -68,7 +108,7 @@ void VMEcaen::utilsVMEwrite(uint32_t busAddr, int data)
 //sizeBytes instructs how many bytes to read
 //data is stored at dataBuff
 //*dataTransf stores how many 32 bit words were transfered
-void VMEcaen::utilsVMEbltRead(uint32_t busAddr, int sizeBytes, uint32_t *dataBuff, int *dataTransf)
+void VX2718::utilsVMEbltRead(uint32_t busAddr, int sizeBytes, uint32_t *dataBuff, int *dataTransf)
 {
       
     CAENComm_ErrorCode err;
@@ -82,14 +122,14 @@ void VMEcaen::utilsVMEbltRead(uint32_t busAddr, int sizeBytes, uint32_t *dataBuf
 
 }
 
-void VMEcaen::utilsVMEsetAddrMod(int newaddrmod)
+void VX2718::utilsVMEsetAddrMod(int newaddrmod)
 {
 
     this->addr_mod_opt = newaddrmod;
 
 }
 
-void VMEcaen::utilsVMEsetDataW(int newdataw)
+void VX2718::utilsVMEsetDataW(int newdataw)
 {
 
     this->data_w_opt = newdataw;
@@ -97,7 +137,7 @@ void VMEcaen::utilsVMEsetDataW(int newdataw)
 }
 
 
-int VMEcaen::utilsVMEirqCheck(uint32_t lineNr)
+int VX2718::utilsVMEirqCheck(uint32_t lineNr)
 {
 
     /* int err = 0;
@@ -141,4 +181,14 @@ int VMEcaen::utilsVMEirqCheck(uint32_t lineNr)
 
     return 0; */
 
+}
+
+
+
+
+extern "C"{
+    std::unique_ptr<VMEController> MakeContObj()
+    {
+        return std::unique_ptr<VMEController>(new VX2718());
+    }
 }
