@@ -140,17 +140,6 @@ void VX2718::utilsVMEsetDataW(int newdataw)
 int VX2718::utilsVMEirqCheck(uint32_t lineNr)
 {
 
-    /* int err = 0;
-    uint32_t data_reg = 0;
-    err = this->sis_crate->udp_sis3153_register_read(0x12, &data_reg);
-        if(err != 0){
-            std::cout<<"Error read reg code "<<err<<std::endl;
-        }
-    std::cout<<"irq status: "<<std::bitset<32>(data_reg)<<std::endl;
-    
-    if(((data_reg>>lineNr) & 1) == 1){
-        return 1;
-    } */
 
     CAENComm_ErrorCode err;
 
@@ -186,9 +175,12 @@ int VX2718::utilsVMEirqCheck(uint32_t lineNr)
 
 
 
-extern "C"{
+extern "C"
+{
+
     std::unique_ptr<VMEController> MakeContObj()
     {
         return std::unique_ptr<VMEController>(new VX2718());
     }
+    
 }

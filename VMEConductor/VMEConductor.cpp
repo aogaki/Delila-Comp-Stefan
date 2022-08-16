@@ -394,7 +394,7 @@ int VMEConductor::read_data_from_detectors()
                 data->Mod = t_data_v->at(i).Mod;
                 data->Ch = t_data_v->at(i).Ch;
                 data->FineTS = t_data_v->at(i).FineTS;
-                data->TimeStamp =  t_data_v->at(i).TimeStamp + evNumber;
+                data->TimeStamp =  t_data_v->at(i).TimeStamp;
                 data->ChargeLong =  t_data_v->at(i).ChargeLong;
                 data->ChargeShort =  t_data_v->at(i).ChargeShort;
                 data->Extras =  t_data_v->at(i).Extras;
@@ -456,10 +456,6 @@ int VMEConductor::read_data_from_detectors()
                 fDataContainer.AddData(hit);
             }
 
-
-            if(fNEvents != 0){
-                evNumber +=  t_data_v->at(fNEvents - 1).TimeStamp;
-            }
             
 
         }

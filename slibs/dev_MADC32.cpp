@@ -10,6 +10,7 @@
 
 
 
+
 //g++ -c -Wall -fPIC -I../include dev_MADC32.cpp -ldl
 //g++ -shared -o dev_MADC32.so dev_MADC32.o /home/gant/DELILA-main/Components/src/VMEController.o /home/gant/DELILA-main/Components/src/VMEDevice.o -ldl
 
@@ -39,6 +40,11 @@ class MADC32 : public VMEDevice
     int hold_d1;
     int hold_w0;
     int hold_w1;
+
+
+    //stores the total number of events
+    uint64_t evNumber;
+
 
     
 
@@ -224,6 +230,11 @@ std::unique_ptr<VMEController> MADC32::mod_configure(std::unique_ptr<VMEControll
     }
 
 
+
+    //set event number to 0
+    evNumber = 0;
+
+
     printf("Configure for mod %d end\n", modId);
     fflush(stdout);
 
@@ -347,9 +358,6 @@ std::unique_ptr<VMEController> MADC32::mod_run(std::unique_ptr<VMEController> my
 
 
         if(ext_ts == 0){
-            //Event number for this sequence
-            uint64_t evNumberSq = 0;
-
 
             for(int i = 0; i<buffSize; i++){
 
@@ -376,7 +384,7 @@ std::unique_ptr<VMEController> MADC32::mod_run(std::unique_ptr<VMEController> my
 
                         loc_data.Mod = mod_nr;
                         loc_data.Ch = ((dataBuff[i]>>16)&0b0000000000011111);
-                        loc_data.TimeStamp = evNumberSq;
+                        loc_data.TimeStamp = evNumber;
                         loc_data.FineTS = 0;
 
                         if(((dataBuff[i]>>14) & 0x1) == 1){
@@ -407,7 +415,7 @@ std::unique_ptr<VMEController> MADC32::mod_run(std::unique_ptr<VMEController> my
 
                 }else if((dataBuff[i]>>30) == 3){
                     
-                    evNumberSq++;
+                    evNumber++;
 
                 }
 
@@ -523,7 +531,7 @@ std::unique_ptr<VMEController> MADC32::mod_run(std::unique_ptr<VMEController> my
 
                         for(int iter_eoe = 0; iter_eoe<ev_in_h; iter_eoe++){
 
-                            t_data->at(*fNEvents - (ev_in_h - iter_eoe)).TimeStamp = (ext_ts_hb<<16) + ext_ts_lb;
+                            t_data->at((*fNEvents) - (ev_in_h - iter_eoe)).TimeStamp = (ext_ts_hb<<16) + ext_ts_lb;
 
                         }
 
