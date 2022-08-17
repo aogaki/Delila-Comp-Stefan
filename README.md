@@ -14,6 +14,7 @@ For the VMEConductor additional steps are required:
   
   
   -Go to the slibs folder and type
+  
     g++ -c -Wall -fPIC -lCAENComm -I../include cont_2718.cpp -ldl
     g++ -shared -o cont_2718.so cont_2718.o /home/gant/DELILA-main/Components/src/VMEController.o -ldl -lCAENComm
     
