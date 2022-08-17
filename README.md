@@ -9,6 +9,7 @@ Don't forget to get what files you don't have from /include and /src.
 
 For the VMEConductor additional steps are required:
   -Go to the src folder and type
+  
     g++ -fPIC -shared -o VMEController.o VMEController.cpp
     g++ -fPIC -shared -o VMEDevice.o VMEDevice.cpp VMEController.o
   
