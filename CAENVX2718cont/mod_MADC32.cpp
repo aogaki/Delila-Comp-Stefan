@@ -4,28 +4,37 @@
 #include <stdlib.h>
 
 
-//g++ -c -Wall -fPIC mod_MTDC32.cpp
-//g++ -shared -o mod_MTDC32.so mod_MTDC32.o
+//g++ -c -Wall -fPIC -I../include mod_MADC32.cpp
+//g++ -shared -o mod_MADC32.so mod_MADC32.o
+
 
 
 extern "C"
 {
 
-    int win_start[100];
-    int b_width[100];
-    int res_opt[100];
-    int trig_source[100];
-    int trig_opt[100];
+    typedef void (*writeFct)(uint32_t, int);
+    typedef void (*setamFct)(int);
+    typedef void (*setdwFct)(int);
+    typedef void (*bltreadFct)(uint32_t, int, uint32_t*, int*);
+    typedef int (*irqcheckFct)(uint32_t);
+
+
+    int mod_nr[100];
+    int irq_l[100];
+    int v_th[100][33];
     int irq_data_thr[100];
     int max_data_transf[100];
-    int ttl_opt[100];//TTL is active for 1 and inactive for 0
-    int mod_nr[100];
     int ext_ts[100];
-    int irq_l[100];
+    int res_opt[100];
+    int in_range[100];
+    int hold_d0[100];
+    int hold_d1[100];
+    int hold_w0[100];
+    int hold_w1[100];
 
     uint64_t evNumber[100];
 
-
+    
 
     void read_cfg(uint32_t addr_offset, int modId)
     {
@@ -33,7 +42,9 @@ extern "C"
         sprintf(addr_str, "%08X", addr_offset);
         char *file_loc = (char*)malloc(100*sizeof(char));
 
-        strcat(file_loc, "/home/gant/DELILA-main/Components/CAENVX2718cont/conf_MTDC32_0x");
+
+        memset(file_loc, '\0', sizeof(file_loc));
+        strcat(file_loc, "/home/gant/DELILA-main/Components/CAENVX2718cont/conf_MADC32_0x");
         strcat(file_loc, addr_str);
         strcat(file_loc, ".conf");
 
@@ -46,7 +57,7 @@ extern "C"
         free(file_loc);
 
         if(cFile == NULL){
-            printf("Error opening MTDC32 config\n");
+            printf("Error opening MADC32 config\n");
             return;
         }
 
@@ -55,28 +66,47 @@ extern "C"
         char *stop;
 
         while(fscanf(cFile, "%127[^=]=%127[^\n]%*c", name, val) == 2){
-            if(strcmp(name, "win_start") == 0)
-                win_start[modId] = strtol(val, &stop, 10);
-            else if(strcmp(name, "b_width") == 0)
-                b_width[modId] = strtol(val, &stop, 10);
-            else if(strcmp(name, "res_opt") == 0)
-                res_opt[modId] = strtol(val, &stop, 10);
-            else if(strcmp(name, "trig_source") == 0)
-                trig_source[modId] = strtol(val, &stop, 2);
-            else if(strcmp(name, "trig_opt") == 0)
-                trig_opt[modId] = strtol(val, &stop, 10);
+            for(int i = 0; i<32; i++){
+                char *v_th_str = (char*)malloc(100*sizeof(char));
+                char *i_str = (char*)malloc(100*sizeof(char));
+
+                sprintf(i_str, "%d", i);
+
+                memset(v_th_str, '\0', sizeof(v_th_str));
+                strcat(v_th_str, "v_th");
+                strcat(v_th_str, i_str);
+
+                if(strcmp(name, v_th_str) == 0){
+                    v_th[modId][i] = strtol(val, &stop, 10);
+                }
+                    
+
+
+                free(i_str);
+                free(v_th_str);
+            }
+            if(strcmp(name, "mod_nr") == 0)
+                mod_nr[modId] = strtol(val, &stop, 10);
+            else if(strcmp(name, "irq_l") == 0)
+                irq_l[modId] = strtol(val, &stop, 10); 
             else if(strcmp(name, "irq_data_thr") == 0)
                 irq_data_thr[modId] = strtol(val, &stop, 10);
             else if(strcmp(name, "max_data_transf") == 0)
                 max_data_transf[modId] = strtol(val, &stop, 10);
-            else if(strcmp(name, "ttl_opt") == 0)
-                ttl_opt[modId] = strtol(val, &stop, 10);
-            else if(strcmp(name, "mod_nr") == 0)
-                mod_nr[modId] = strtol(val, &stop, 10);
             else if(strcmp(name, "ext_ts") == 0)
                 ext_ts[modId] = strtol(val, &stop, 10);
-            else if(strcmp(name, "irq_l") == 0)
-                irq_l[modId] = strtol(val, &stop, 10);   
+            else if(strcmp(name, "res_opt") == 0)
+                res_opt[modId] = strtol(val, &stop, 10);
+            else if(strcmp(name, "in_range") == 0)
+                in_range[modId] = strtol(val, &stop, 10);
+            else if(strcmp(name, "hold_d0") == 0)
+                hold_d0[modId] = strtol(val, &stop, 10);
+            else if(strcmp(name, "hold_d1") == 0)
+                hold_d1[modId] = strtol(val, &stop, 10); 
+            else if(strcmp(name, "hold_w0") == 0)
+                hold_w0[modId] = strtol(val, &stop, 10); 
+            else if(strcmp(name, "hold_w1") == 0)
+                hold_w1[modId] = strtol(val, &stop, 10);    
         }
     //printf("ws = %d\nbw = %d\nro = %d\nts = %d\nto = %d\nidq = %d\nmdt = %d\nto = %d\nmodnr = %d\nextts = %d\n",
              //win_start[modId], b_width[modId], res_opt[modId], trig_source[modId], trig_opt[modId],
@@ -84,11 +114,14 @@ extern "C"
         
     }
 
-    void mod_configure(void (*ptr_write)(uint32_t, int), void (*ptr_setAM)(int), void (*ptr_setDW)(int),
-                         uint32_t addr_offset, int modId)
+
+    void mod_configure(writeFct ptr_write, setamFct ptr_setAM, setdwFct ptr_setDW, uint32_t addr_offset, int modId)
     {
 
-        //set nr of events to 0
+        printf("Configure for mod %d begin\n", modId);
+        fflush(stdout);
+
+        //set number of events to 0
         evNumber[modId] = 0;
 
         //read config file
@@ -98,7 +131,7 @@ extern "C"
         (*ptr_setAM)(0);
         //set data width
         (*ptr_setDW)(0);
- 
+
         //stop data transfer
         (*ptr_write)(0x603A + addr_offset, 0);
 
@@ -117,21 +150,41 @@ extern "C"
         //set irq vector
         (*ptr_write)(0x6012 + addr_offset, 0);
 
-        //set trig ecl
-        (*ptr_write)(0x6068 + addr_offset, 1);
-
-        //set win start
-        (*ptr_write)(0x6050 + addr_offset, win_start[modId]);
-
-        //set bank width
-        (*ptr_write)(0x6054 + addr_offset, b_width[modId]);
-
         //set resolution option
         (*ptr_write)(0x6042 + addr_offset, res_opt[modId]);
+        
+        //set input range
+        (*ptr_write)(0x6060 + addr_offset, in_range[modId]);
 
 
-        //set trig source
-        (*ptr_write)(0x6058 + addr_offset, trig_source[modId]);
+
+        //gate generator
+        //hold delay 0
+        (*ptr_write)(0x6050 + addr_offset, hold_d0[modId]);
+
+        //hold delay 1
+        (*ptr_write)(0x6052 + addr_offset, hold_d1[modId]);
+
+        //hold width 0
+        (*ptr_write)(0x6054 + addr_offset, hold_w0[modId]);
+
+        //hold width 1
+        (*ptr_write)(0x6056 + addr_offset, hold_w1[modId]);
+
+
+
+
+
+
+
+        //set voltage threshold for all 32 channels
+        for(int i = 0; i<32; i++){
+
+            printf("vth de %d e %d\n",i, v_th[modId][i]);
+
+            (*ptr_write)(addr_offset + 0x4000 + 2*i, v_th[modId][i]);
+
+        }
 
         //set irq data transf
         (*ptr_write)(0x6018 + addr_offset, irq_data_thr[modId]);
@@ -140,16 +193,6 @@ extern "C"
         (*ptr_write)(0x601A + addr_offset, max_data_transf[modId]);
 
 
-        //run if ttl
-        if(ttl_opt[modId]){
-
-            //TTL bank th
-            (*ptr_write)(0x6078 + addr_offset, 255);
-
-            //TTL pos sig edge
-            (*ptr_write)(0x6060 + addr_offset, 3);
-
-        }
 
         //if extended time stamp is on
         if(ext_ts[modId]){
@@ -161,12 +204,17 @@ extern "C"
         }
 
 
+        printf("Configure for mod %d end\n", modId);
+        fflush(stdout);
 
     }
 
-    void mod_start(void (*ptr_write)(uint32_t, int), void (*ptr_setAM)(int), void (*ptr_setDW)(int),
-                     uint32_t addr_offset, int modId)
+
+    void mod_start(writeFct ptr_write, setamFct ptr_setAM, setdwFct ptr_setDW, uint32_t addr_offset, int modId)
     {
+
+        printf("Start for mod %d begin\n", modId);
+        fflush(stdout);
 
         //set address modifier
         (*ptr_setAM)(0);
@@ -182,14 +230,21 @@ extern "C"
             (*ptr_write)(addr_offset + 0x6090, 1);
         }
 
+        //start test
+        //(*ptr_write)(0x6070 + addr_offset, 0b111);
+
+
+
+        printf("Start for mod %d end\n", modId);
+        fflush(stdout);
 
     }
 
-    void mod_stop(void (*ptr_write)(uint32_t, int), void (*ptr_setAM)(int), void (*ptr_setDW)(int),
-                     uint32_t addr_offset, int modId)
+
+    void mod_stop(writeFct ptr_write, setamFct ptr_setAM, setdwFct ptr_setDW, uint32_t addr_offset, int modId)
     {
 
-        printf("Stop for mod %d\n", modId);
+        printf("Stop for mod %d begin\n", modId);
         fflush(stdout);
 
         //set address modifier
@@ -200,8 +255,16 @@ extern "C"
         //stop data transfer
         (*ptr_write)(0x603A + addr_offset, 0);
 
-    }    
 
+
+        //stop test
+        //(*ptr_write)(0x6070 + addr_offset, 0);
+
+
+        printf("Stop for mod %d end\n", modId);
+        fflush(stdout);
+
+    }
 
 
     //for testing
@@ -219,13 +282,8 @@ extern "C"
 
 
 
-
-
-
-
-
-    void mod_run(void (*ptr_blt_read)(uint32_t, int, uint32_t*, int*), void (*ptr_write)(uint32_t, int),
-                 void (*ptr_setAM)(int), void (*ptr_setDW)(int), int (*ptr_irqCheck)(uint32_t), 
+    void mod_run(bltreadFct ptr_blt_read, writeFct ptr_write,
+                 setamFct ptr_setAM, setdwFct ptr_setDW, irqcheckFct ptr_irqCheck, 
                  uint32_t addr_offset,
                  unsigned char *mod_Mod,
                  unsigned char *mod_Ch,
@@ -244,26 +302,20 @@ extern "C"
 
         if((*ptr_irqCheck)(irq_l[modId]) == 1){
 
-
-
-            
-
-            //sets address modifiern
-            (*ptr_setAM)(1);
-            //set data width
-            (*ptr_setDW)(1); 
-
-
             //allocate memory for data
-            uint32_t *dataBuff = (uint32_t*)malloc(50000*sizeof(uint32_t));
+            uint32_t *dataBuff = (uint32_t*)malloc(10000*sizeof(uint32_t));
 
 
             //amount of data transfered
             int buffSize = -1;
 
+            //sets address modifiern
+            (*ptr_setAM)(1);
+            //set data width
+            (*ptr_setDW)(1);
 
             //blt read from FIFO
-            (*ptr_blt_read)(addr_offset + 0x0000,  50000, dataBuff, &buffSize);
+            (*ptr_blt_read)(addr_offset + 0x0000,  10000, dataBuff, &buffSize);
 
 
             printf("buffsize of %d from module %d\n", buffSize, modId);
@@ -273,13 +325,13 @@ extern "C"
             (*ptr_setAM)(0);
             //set data width
             (*ptr_setDW)(0);
-
             
             //reset BERR
-            (*ptr_write)(addr_offset + 0x6034, 1);  
+            (*ptr_write)(addr_offset + 0x6034, 1); 
 
 
             if(ext_ts[modId] == 0){
+
 
                 for(int i = 0; i<buffSize; i++){
 
@@ -287,7 +339,6 @@ extern "C"
                     //######
                     //char *binary = toBinary((dataBuff[i]), 32);
                     //printf("The binary representation of %u is %s\n", (dataBuff[i]), binary);
-                    //free(binary);
                     //######
 
                     if((dataBuff[i]>>30) == 1){
@@ -305,8 +356,15 @@ extern "C"
                             mod_Mod[*fNEvents] = mod_nr[modId];
                             mod_Ch[*fNEvents] = ((dataBuff[i]>>16)&0b0000000000011111);
                             mod_TimeStamp[*fNEvents] = evNumber[modId];
-                            mod_FineTS[*fNEvents] = (double)(dataBuff[i] & 0x0000FFFF);
-                            mod_ChargeLong[*fNEvents] = 0xFFFF;
+                            mod_FineTS[*fNEvents] = 0;
+
+                            if(((dataBuff[i]>>14) & 0x1) == 1){
+                                mod_ChargeLong[*fNEvents] = 0xFFFF;
+                            }else{
+                                mod_ChargeLong[*fNEvents] = (uint16_t)(dataBuff[i] & 0x00003FFF);
+                            }
+                            
+
                             mod_ChargeShort[*fNEvents] = 0xFFFF;
                             mod_RecordLength[*fNEvents] = 1;
                             mod_Extras[*fNEvents] = 0xFFFF0032;
@@ -316,9 +374,9 @@ extern "C"
                         }else if(dataBuff[i] != 0){
 
                             //printf("Data event invalid\n");
-                            //char *binary = toBinary((dataBuff[i]), 32);
+                            char *binary = toBinary((dataBuff[i]), 32);
                             //printf("Data event invalid %u is %s at i = %d\n", (dataBuff[i]), binary, i);
-                            //free(binary);
+                            free(binary);
 
                         }
 
@@ -335,7 +393,7 @@ extern "C"
 
 
 
-                    
+                    //free(binary);
                 
                 }
             }else if(ext_ts[modId] == 1){
@@ -390,8 +448,14 @@ extern "C"
                             //nonsense value that is changed if the time stamp is valid
                             mod_TimeStamp[*fNEvents] = 0xFFFFFFFFFFFFFFFF;
 
-                            mod_FineTS[*fNEvents] = (double)(dataBuff[i] & 0x0000FFFF);
-                            mod_ChargeLong[*fNEvents] = 0xFFFF;
+                            mod_FineTS[*fNEvents] = 0;
+
+                            if(((dataBuff[i]>>14) & 0x1) == 1){
+                                mod_ChargeLong[*fNEvents] = 0xFFFF;
+                            }else{
+                                mod_ChargeLong[*fNEvents] = (uint16_t)(dataBuff[i] & 0x00003FFF);
+                            }
+
                             mod_ChargeShort[*fNEvents] = 0xFFFF;
                             mod_RecordLength[*fNEvents] = 1;
                             mod_Extras[*fNEvents] = 0xFFFF0032;
@@ -444,11 +508,29 @@ extern "C"
 
 
 
+
+
+
             free(dataBuff);
 
         }
 
+
+
+
+
     }
+
+
+
+
+
+
+
+
+
+
+
 
 
     //checks if the device outputs data
@@ -457,7 +539,7 @@ extern "C"
     {
         return 1;
     }
-
+                         
 
 
 }

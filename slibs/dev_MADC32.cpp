@@ -7,6 +7,9 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <nlohmann/json.hpp>
+#include <fstream>
+#include <iomanip>
 
 
 
@@ -69,82 +72,99 @@ class MADC32 : public VMEDevice
 void MADC32::read_cfg()
 {
 
-    char *addr_str = (char*)malloc(20*sizeof(char));
-        sprintf(addr_str, "%08X", addr_offset);
-        char *file_loc = (char*)malloc(100*sizeof(char));
+    std::string disk_loc_begin = "/home/gant/DELILA-main/Components/slibs/conf_MADC32_0x";
+
+    std::stringstream disk_loc_mid;
+    disk_loc_mid << std::hex << this->addr_offset;
+
+    std::string disk_loc_end = ".json";
+
+    std::string disk_loc = disk_loc_begin + disk_loc_mid.str() + disk_loc_end;
 
 
-        memset(file_loc, '\0', sizeof(file_loc));
-        strcat(file_loc, "/home/gant/DELILA-main/Components/CAENVX2718cont/conf_MADC32_0x");
-        strcat(file_loc, addr_str);
-        strcat(file_loc, ".conf");
 
-        printf("Stringul e %s\n", file_loc);
 
-        FILE *cFile;
-        cFile = fopen(file_loc, "r");
+    std::ifstream conf_file(disk_loc.c_str());
+    if(!conf_file.is_open()){
+        std::cerr<<"Failed to open config file "<<disk_loc<<std::endl;
+    }else{
+        std::cout<<"File opened successfully "<<disk_loc<<std::endl;
+    }
 
-        free(addr_str);
-        free(file_loc);
 
-        if(cFile == NULL){
-            printf("Error opening MADC32 config\n");
-            return;
+
+    nlohmann::json conf_data;
+    bool has_exception = false;
+
+    try
+    {
+        conf_data = nlohmann::json::parse(conf_file);
+    }
+    catch(nlohmann::json::parse_error &ex)
+    {
+        has_exception = true;
+        std::cerr<<"Parse error at byte "<<ex.byte<<std::endl;
+    }
+
+ 
+    if(has_exception == false){
+        
+        //std::cout<<stoi(conf_data["mod_nr"].get<std::string>());
+        this->mod_nr = stoi(conf_data["mod_nr"].get<std::string>());
+        this->irq_l = stoi(conf_data["irq_l"].get<std::string>());
+        this->irq_data_thr = stoi(conf_data["irq_data_thr"].get<std::string>());
+        this->max_data_transf = stoi(conf_data["max_data_transf"].get<std::string>());
+        this->ext_ts = stoi(conf_data["ext_ts"].get<std::string>());
+        this->res_opt = stoi(conf_data["res_opt"].get<std::string>());
+        this->in_range = stoi(conf_data["in_range"].get<std::string>());
+        this->hold_d0 = stoi(conf_data["hold_d0"].get<std::string>());
+        this->hold_d1 = stoi(conf_data["hold_d1"].get<std::string>());
+        this->hold_w0 = stoi(conf_data["hold_w0"].get<std::string>());
+        this->hold_w1 = stoi(conf_data["hold_w1"].get<std::string>());
+
+
+
+
+
+        for(int i = 0; i<32; i++){
+
+            std::string curr_vth = "v_th" + std::to_string(i);
+            v_th[i] = stoi(conf_data[curr_vth.c_str()].get<std::string>());
+
         }
 
-        char name[128];
-        char val[128];
-        char *stop;
-
-        while(fscanf(cFile, "%127[^=]=%127[^\n]%*c", name, val) == 2){
-            for(int i = 0; i<32; i++){
-                char *v_th_str = (char*)malloc(100*sizeof(char));
-                char *i_str = (char*)malloc(100*sizeof(char));
-
-                sprintf(i_str, "%d", i);
-
-                memset(v_th_str, '\0', sizeof(v_th_str));
-                strcat(v_th_str, "v_th");
-                strcat(v_th_str, i_str);
-
-                if(strcmp(name, v_th_str) == 0){
-                    v_th[i] = strtol(val, &stop, 10);
-                }
-                    
 
 
-                free(i_str);
-                free(v_th_str);
-            }
-            if(strcmp(name, "mod_nr") == 0)
-                mod_nr = strtol(val, &stop, 10);
-            else if(strcmp(name, "irq_l") == 0)
-                irq_l = strtol(val, &stop, 10); 
-            else if(strcmp(name, "irq_data_thr") == 0)
-                irq_data_thr = strtol(val, &stop, 10);
-            else if(strcmp(name, "max_data_transf") == 0)
-                max_data_transf = strtol(val, &stop, 10);
-            else if(strcmp(name, "ext_ts") == 0)
-                ext_ts = strtol(val, &stop, 10);
-            else if(strcmp(name, "res_opt") == 0)
-                res_opt = strtol(val, &stop, 10);
-            else if(strcmp(name, "in_range") == 0)
-                in_range = strtol(val, &stop, 10);
-            else if(strcmp(name, "hold_d0") == 0)
-                hold_d0 = strtol(val, &stop, 10);
-            else if(strcmp(name, "hold_d1") == 0)
-                hold_d1 = strtol(val, &stop, 10); 
-            else if(strcmp(name, "hold_w0") == 0)
-                hold_w0 = strtol(val, &stop, 10); 
-            else if(strcmp(name, "hold_w1") == 0)
-                hold_w1 = strtol(val, &stop, 10);    
-        }
+
+
+
+
+
+        std::cout<<"mod_nr="<<this->mod_nr<<" irql="<<this->irq_l<<" irqdt="<<this->irq_data_thr
+        <<" mdt="<<this->max_data_transf<<" ets="<<this->ext_ts<<" ro="<<this->res_opt
+        <<" ir="<<this->in_range<<" hd0="<<this->hold_d0<<" hw0="<<this->hold_w0
+        <<" hd1="<<this->hold_d1<<" hw1="<<this->hold_w1<<std::endl;
+
+
+
+    }else{
+        std::cerr<<"Coud not set parameters due to exception"<<std::endl;
+    }
+     
+
 
 }
 
 
+
+
+
+
 std::unique_ptr<VMEController> MADC32::mod_configure(std::unique_ptr<VMEController> my_contr, uint32_t addr_offset, int modId)
 {
+
+    std::cout<<"\nConfigure for mod "<<modId<<" begin"<<std::endl;
+
     this->addr_offset = addr_offset;
     this->modId = modId;
 
@@ -235,7 +255,7 @@ std::unique_ptr<VMEController> MADC32::mod_configure(std::unique_ptr<VMEControll
     evNumber = 0;
 
 
-    printf("Configure for mod %d end\n", modId);
+    printf("Configure for mod %d end\n\n", modId);
     fflush(stdout);
 
 

@@ -254,6 +254,11 @@ int CAENVX2718cont::parse_params(::NVList* list)
             //we found the address so we set addrExists to true
             addrExists = true;
 
+        }else if(sname == ""){
+            
+            
+
+
         }
 
 
@@ -489,7 +494,7 @@ int CAENVX2718cont::read_data_from_detectors()
                 data->Mod = mod_Mod[i];
                 data->Ch = mod_Ch[i];
                 data->FineTS = mod_FineTS[i];
-                data->TimeStamp = mod_TimeStamp[i] + evNumber;
+                data->TimeStamp = mod_TimeStamp[i];
                 data->ChargeLong = mod_ChargeLong[i];
                 data->ChargeShort = mod_ChargeShort[i];
                 data->Extras = mod_Extras[i];
@@ -550,8 +555,6 @@ int CAENVX2718cont::read_data_from_detectors()
  
                 fDataContainer.AddData(hit);
             }
-
-            evNumber += mod_TimeStamp[fNEvents - 1];
 
         }
 
