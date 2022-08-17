@@ -26,8 +26,8 @@ For the VMEConductor additional steps are required:
     g++ -shared -o dev_MADC32.so dev_MADC32.o /home/gant/DELILA-main/Components/src/VMEController.o /home/gant/DELILA-main/Components/src/VMEDevice.o -ldl
     
     
-  -Edit or create a json config file for your module. The name should be something like 'conf_MADC32_{address fron the board}.json'
-    example 'conf_MADC32_0x4000000.json'
+  -Edit or create a json config file for your module. The name should be something like 'conf_MADC32_{address from the board}.json';
+    example: 'conf_MADC32_0x4000000.json'
 
 
 
