@@ -1,0 +1,13 @@
+{
+    "win_start": "16284",
+    "b_width": "2000",
+    "res_opt": "9",
+    "trig_source": "0100000000",
+    "trig_opt": "1",
+    "irq_data_thr": "10000",
+    "max_data_transf": "0",
+    "ttl_opt": "1",
+    "mod_nr": "0",
+    "ext_ts": "0",
+    "irq_l": "1"
+}

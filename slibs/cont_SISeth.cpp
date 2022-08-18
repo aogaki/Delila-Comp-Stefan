@@ -125,7 +125,8 @@ int SISeth::utilsVMEirqCheck(uint32_t lineNr)
 
     int err = 0;
     uint32_t data_reg = 0;
-    err = this->sis_crate->udp_sis3153_register_read(0x12, &data_reg);
+    err = this->sis_crate->udp_sis3153_register_read(0x12, &
+    data_reg);
     if(err != 0){
         std::cout<<"Error read reg irq code "<<err<<std::endl;
     }
