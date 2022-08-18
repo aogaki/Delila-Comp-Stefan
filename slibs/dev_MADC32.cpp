@@ -10,6 +10,7 @@
 #include <nlohmann/json.hpp>
 #include <fstream>
 #include <iomanip>
+#include <bitset>
 
 
 
@@ -43,6 +44,9 @@ class MADC32 : public VMEDevice
     int hold_d1;
     int hold_w0;
     int hold_w1;
+    int bank_op;
+
+    uint32_t mean;
 
 
     //stores the total number of events
@@ -121,6 +125,8 @@ void MADC32::read_cfg()
         this->hold_d1 = stoi(conf_data["hold_d1"].get<std::string>());
         this->hold_w0 = stoi(conf_data["hold_w0"].get<std::string>());
         this->hold_w1 = stoi(conf_data["hold_w1"].get<std::string>());
+        this->bank_op = stoi(conf_data["bank_op"].get<std::string>());
+
 
 
 
@@ -143,7 +149,7 @@ void MADC32::read_cfg()
         std::cout<<"mod_nr="<<this->mod_nr<<" irql="<<this->irq_l<<" irqdt="<<this->irq_data_thr
         <<" mdt="<<this->max_data_transf<<" ets="<<this->ext_ts<<" ro="<<this->res_opt
         <<" ir="<<this->in_range<<" hd0="<<this->hold_d0<<" hw0="<<this->hold_w0
-        <<" hd1="<<this->hold_d1<<" hw1="<<this->hold_w1<<std::endl;
+        <<" hd1="<<this->hold_d1<<" hw1="<<this->hold_w1<<" bop="<<this->bank_op<<std::endl;
 
 
 
@@ -191,31 +197,34 @@ std::unique_ptr<VMEController> MADC32::mod_configure(std::unique_ptr<VMEControll
     my_contr->utilsVMEwrite(0x6034 + addr_offset, 1);
 
     //set irq level
-    my_contr->utilsVMEwrite(0x6010 + addr_offset, irq_l);
+    my_contr->utilsVMEwrite(0x6010 + addr_offset, this->irq_l);
 
     //set irq vector
     my_contr->utilsVMEwrite(0x6012 + addr_offset, 0);
 
     //set resolution option
-    my_contr->utilsVMEwrite(0x6042 + addr_offset, res_opt);
+    my_contr->utilsVMEwrite(0x6042 + addr_offset, this->res_opt);
         
     //set input range
-    my_contr->utilsVMEwrite(0x6060 + addr_offset, in_range);
+    my_contr->utilsVMEwrite(0x6060 + addr_offset, this->in_range);
 
 
 
     //gate generator
     //hold delay 0
-    my_contr->utilsVMEwrite(0x6050 + addr_offset, hold_d0);
+    my_contr->utilsVMEwrite(0x6050 + addr_offset, this->hold_d0);
 
     //hold delay 1
-    my_contr->utilsVMEwrite(0x6052 + addr_offset, hold_d1);
+    my_contr->utilsVMEwrite(0x6052 + addr_offset, this->hold_d1);
 
     //hold width 0
-    my_contr->utilsVMEwrite(0x6054 + addr_offset, hold_w0);
+    my_contr->utilsVMEwrite(0x6054 + addr_offset, this->hold_w0);
 
     //hold width 1
-    my_contr->utilsVMEwrite(0x6056 + addr_offset, hold_w1);
+    my_contr->utilsVMEwrite(0x6056 + addr_offset, this->hold_w1);
+
+    //bank operation
+    my_contr->utilsVMEwrite(0x6040 + addr_offset, this->bank_op);
 
 
 
@@ -228,20 +237,20 @@ std::unique_ptr<VMEController> MADC32::mod_configure(std::unique_ptr<VMEControll
 
         printf("vth de %d e %d\n",i, v_th[i]);
 
-        my_contr->utilsVMEwrite(addr_offset + 0x4000 + 2*i, v_th[i]);
+        my_contr->utilsVMEwrite(addr_offset + 0x4000 + 2*i, this->v_th[i]);
 
     }
 
     //set irq data transf
-    my_contr->utilsVMEwrite(0x6018 + addr_offset, irq_data_thr);
+    my_contr->utilsVMEwrite(0x6018 + addr_offset, this->irq_data_thr);
 
     //set max data transf
-    my_contr->utilsVMEwrite(0x601A + addr_offset, max_data_transf);
+    my_contr->utilsVMEwrite(0x601A + addr_offset, this->max_data_transf);
 
 
 
     //if extended time stamp is on
-    if(ext_ts){
+    if(this->ext_ts){
         //enable extended time stamp mode
         my_contr->utilsVMEwrite(0x6038 + addr_offset, 3);
     }else{
@@ -252,7 +261,9 @@ std::unique_ptr<VMEController> MADC32::mod_configure(std::unique_ptr<VMEControll
 
 
     //set event number to 0
-    evNumber = 0;
+    this->evNumber = 0;
+
+    this->mean = 0;
 
 
     printf("Configure for mod %d end\n\n", modId);
@@ -374,7 +385,6 @@ std::unique_ptr<VMEController> MADC32::mod_run(std::unique_ptr<VMEController> my
 
         //reset BERR
         my_contr->utilsVMEwrite(addr_offset + 0x6034, 1);
-    
 
 
         if(ext_ts == 0){
@@ -386,6 +396,8 @@ std::unique_ptr<VMEController> MADC32::mod_run(std::unique_ptr<VMEController> my
                     //char *binary = toBinary((dataBuff[i]), 32);
                     //printf("The binary representation of %u is %s\n", (dataBuff[i]), binary);
                     //######
+
+                //std::cerr<<"The data is: "<<std::bitset<32>(dataBuff[i])<<std::endl;
 
 
                 if((dataBuff[i]>>30) == 1){
@@ -400,11 +412,12 @@ std::unique_ptr<VMEController> MADC32::mod_run(std::unique_ptr<VMEController> my
 
                     if((dataBuff[i]>>22) == 16){
 
+
                         TreeData loc_data;
 
-                        loc_data.Mod = mod_nr;
+                        loc_data.Mod = this->mod_nr;
                         loc_data.Ch = ((dataBuff[i]>>16)&0b0000000000011111);
-                        loc_data.TimeStamp = evNumber;
+                        loc_data.TimeStamp = this->evNumber;
                         loc_data.FineTS = 0;
 
                         if(((dataBuff[i]>>14) & 0x1) == 1){
@@ -413,17 +426,27 @@ std::unique_ptr<VMEController> MADC32::mod_run(std::unique_ptr<VMEController> my
                             loc_data.ChargeLong = (uint16_t)(dataBuff[i] & 0x00003FFF);
                         }
 
+
+                        if(this->mean == 0){
+                            this->mean = (dataBuff[i] & 0x00003FFF);
+                        } else{
+                            this->mean = (this->mean + (dataBuff[i] & 0x00003FFF))/2;
+                        }
+
+
+
+
                         loc_data.ChargeShort = 0xFFFF;
                         loc_data.RecordLength = 1;
-                        loc_data.Extras = 0xFFFF0032;
+                        loc_data.Extras = 0;//0xFFFF0032;
 
-
-                            
 
 
                         t_data->push_back(loc_data);
 
+
                         (*fNEvents)++;
+
 
                     }else if(dataBuff[i] != 0){
 
@@ -434,8 +457,9 @@ std::unique_ptr<VMEController> MADC32::mod_run(std::unique_ptr<VMEController> my
 
 
                 }else if((dataBuff[i]>>30) == 3){
-                    
-                    evNumber++;
+
+                    //std::cerr<<"Evnr "<<evNumber<<std::endl;
+                    this->evNumber++;
 
                 }
 
@@ -506,7 +530,6 @@ std::unique_ptr<VMEController> MADC32::mod_run(std::unique_ptr<VMEController> my
                         loc_data.TimeStamp = 0xFFFFFFFFFFFFFFFF;
 
 
-
                         loc_data.FineTS = 0;
 
                         if(((dataBuff[i]>>14) & 0x1) == 1){
@@ -533,6 +556,7 @@ std::unique_ptr<VMEController> MADC32::mod_run(std::unique_ptr<VMEController> my
 
                         ext_ts_lb = (dataBuff[i] & 0x0000FFFF);
                         ts_valid = true;
+                    
 
                     }else if(dataBuff[i] != 0){
 
@@ -544,7 +568,8 @@ std::unique_ptr<VMEController> MADC32::mod_run(std::unique_ptr<VMEController> my
                 }else if((dataBuff[i]>>30) == 3){
 
                     //first 2 bits are always 11 for EOE mark; we only use 30 for the time stamp
-                    ext_ts_hb = (dataBuff[i] && 0x3FFFFFFF);
+                    ext_ts_hb = (dataBuff[i] & 0x3FFFFFFF);
+
 
                     //checks if the 16 low bits of extended time stamp were present
                     if(ts_valid){
@@ -576,14 +601,14 @@ std::unique_ptr<VMEController> MADC32::mod_run(std::unique_ptr<VMEController> my
 
 
 
-
-
+    
+    std::cout<<"MADC Mean "<<this->mean<<std::endl;
 
     }
 
 
 
-
+    
 
 
     return std::move(my_contr);

@@ -370,7 +370,8 @@ int VMEConductor::read_data_from_detectors()
     for(int iter = 0; iter<nrMods; iter+=2){
 
         
-        std::shared_ptr<std::vector<TreeData>> t_data_v;
+        //std::shared_ptr<std::vector<TreeData>> t_data_v;
+        std::shared_ptr<std::vector<TreeData>> t_data_v = std::make_shared<std::vector<TreeData>>();
  
         modHandle = handleSave_v[iter/2];
 

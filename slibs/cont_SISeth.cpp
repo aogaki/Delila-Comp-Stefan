@@ -69,7 +69,7 @@ void SISeth::utilsVMEread(uint32_t busAddr, uint16_t *dataRead)
         
         err = this->sis_crate->vme_A32D16_read(busAddr, dataRead);
         if(err != 0){
-            std::cout<<"Error write code: "<<err<<std::endl;
+            std::cout<<"Error read code: "<<err<<std::endl;
         }
 
     }
@@ -80,7 +80,7 @@ void SISeth::utilsVMEread(uint32_t busAddr, uint16_t *dataRead)
 void SISeth::utilsVMEwrite(uint32_t busAddr, int data)
 {
 
-    uint16_t data_loc = data;
+    uint16_t data_loc = static_cast<uint32_t>(data);
     int err;
     if((this->addr_mod_opt == 0) && (this->data_w_opt == 0)){
         
@@ -99,17 +99,21 @@ void SISeth::utilsVMEbltRead(uint32_t busAddr, int sizeBytes, uint32_t *dataBuff
     uint32_t gotWords;
     int err = 0;
 
+
+
     if((this->addr_mod_opt == 1) && (this->data_w_opt == 1)){
         
         err = this->sis_crate->vme_A32BLT32FIFO_read(busAddr, dataBuff, sizeBytes, &gotWords);
         if(err != 0){
-            std::cout<<"Error write code: "<<err<<std::endl;
+            std::cout<<"Error blt read code: "<<err<<std::endl;
         }
 
     }
 
+    
 
-    (*dataTransf) = gotWords;
+
+    (*dataTransf) = static_cast<int>(gotWords);
 
 
 
@@ -122,12 +126,13 @@ int SISeth::utilsVMEirqCheck(uint32_t lineNr)
     int err = 0;
     uint32_t data_reg = 0;
     err = this->sis_crate->udp_sis3153_register_read(0x12, &data_reg);
-        if(err != 0){
-            std::cout<<"Error read reg code "<<err<<std::endl;
-        }
-    std::cout<<"irq status: "<<std::bitset<32>(data_reg)<<std::endl;
+    if(err != 0){
+        std::cout<<"Error read reg irq code "<<err<<std::endl;
+    }
+    
     
     if(((data_reg>>lineNr) & 1) == 1){
+        std::cout<<"irq status: "<<std::bitset<32>(data_reg)<<std::endl;
         return 1;
     }
 
