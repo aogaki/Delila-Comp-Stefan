@@ -118,6 +118,8 @@ int VMEConductor::daq_configure()
 
     for(int i = 0; i<nrMods; i+=2){
 
+        std::cout<<"Configure conductor mod "<<i/2<<std::endl;
+
         //connect to the shared objects
         modHandle = dlopen(modName_v[i/2].c_str(), RTLD_GLOBAL | RTLD_NOW);
         error_s = dlerror();
@@ -227,6 +229,8 @@ int VMEConductor::parse_params(::NVList* list)
 
 
     }
+
+    std::cout<<"Number of modules is "<<nrMods/2<<std::endl;
 
     return 0;
 }
