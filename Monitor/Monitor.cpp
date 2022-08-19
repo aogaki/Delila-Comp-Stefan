@@ -143,11 +143,7 @@ Monitor::Monitor(RTC::Manager *manager)
       fCalFnc[iBrd][iCh].reset(new TF1(fncName, "pol1"));
       fCalFnc[iBrd][iCh]->SetParameters(0.0, 1.0);
     }
-    /* for (auto iGr = 0; iGr < kgGrp; iGr++) {
-      TString fncName = Form("fnc%02d_%02d", iBrd, iGr);
-      fCalFnc[iBrd][iGr].reset(new TF1(fncName, "pol1"));
-      fCalFnc[iBrd][iGr]->SetParameters(0.0, 1.0);
-    } */
+
 
   }
 }
@@ -183,6 +179,8 @@ int Monitor::daq_configure()
   ::NVList *paramList;
   paramList = m_daq_service0.getCompParams();
   parse_params(paramList);
+
+  read_cfg();
 
   gStyle->SetOptStat(1111);
   gStyle->SetOptFit(1111);
@@ -248,6 +246,15 @@ int Monitor::daq_configure()
           new TH1D(histName, histTitle, 30000, 0.5, 30000.5));
       fHistADC[iBrd][iCh]->SetXTitle("ADC channel");
 
+
+      histName = Form("ADC_calib%02d_%02d", iBrd, iCh);
+      fHistADC_calib[iBrd][iCh].reset(
+          new TH1D(histName, histTitle, 30000, 0.5, 30000.5));
+      fHistADC_calib[iBrd][iCh]->SetXTitle("ADC channel calibrated");
+
+
+
+
       TString grName = Form("signal%02d_%02d", iBrd, iCh);
       fWaveform[iBrd][iCh].reset(new TGraph());
       fWaveform[iBrd][iCh]->SetNameTitle(grName, histTitle);
@@ -265,9 +272,13 @@ int Monitor::daq_configure()
 
 
       histName = Form("hist%02d_gr%02d Po Spec", iBrd, iGr);
-
       fHistPoSp[iBrd][iGr].reset(new TH1D(histName, histTitle, 30000, -1, 1));
       fHistPoSp[iBrd][iGr]->SetXTitle("Position spectrum");
+
+
+      histName = Form("hist%02d_gr%02d En Spec Calib", iBrd, iGr);
+      fHistEnSp_calib[iBrd][iGr].reset(new TH1D(histName, histTitle, 30000, 0.5, 30000.5));
+      fHistEnSp_calib[iBrd][iGr]->SetXTitle("Energy spectrum calibrated");
 
     }
 
@@ -296,11 +307,14 @@ void Monitor::RegisterHists()
       fServ->Register(regDirectory, fHist[iBrd][iCh].get());
       fServ->Register(regDirectory, fHistADC[iBrd][iCh].get());
       fServ->Register(regDirectory, fWaveform[iBrd][iCh].get());
+
+      fServ->Register(regDirectory, fHistADC_calib[iBrd][iCh].get());
     }
 
     for (auto iGr = 0; iGr < kgGrp; iGr++){
       fServ->Register(regDirectory, fHistEnSp[iBrd][iGr].get());
       fServ->Register(regDirectory, fHistPoSp[iBrd][iGr].get());
+      fServ->Register(regDirectory, fHistEnSp_calib[iBrd][iGr].get());
     }
 
 
@@ -338,6 +352,11 @@ void Monitor::RegisterDetectors(std::string fileName, std::string calDirName,
           title = detName + ": " + title;
           fHistADC[mod][ch]->SetTitle(title.c_str());
 
+
+          title = fHistADC_calib[mod][ch]->GetTitle();
+          title = detName + ": " + title;
+          fHistADC_calib[mod][ch]->SetTitle(title.c_str());
+
           title = fHistEnSp[mod][ch/2]->GetTitle();
           title = detName + ": " + title;
           fHistEnSp[mod][ch/2]->SetTitle(title.c_str());
@@ -345,6 +364,12 @@ void Monitor::RegisterDetectors(std::string fileName, std::string calDirName,
           title = fHistPoSp[mod][ch/2]->GetTitle();
           title = detName + ": " + title;
           fHistPoSp[mod][ch/2]->SetTitle(title.c_str());
+
+          title = fHistEnSp_calib[mod][ch/2]->GetTitle();
+          title = detName + ": " + title;
+          fHistEnSp[mod][ch/2]->SetTitle(title.c_str());
+
+
 
           fServ->Register(calDirectory, fHist[mod][ch].get());
           fServ->Register(rawDirectory, fHistADC[mod][ch].get());
@@ -382,6 +407,8 @@ int Monitor::parse_params(::NVList *list)
     } else if (sname == "BinWidth") {
       fBinWidth = std::stod(svalue);
       if (fBinWidth <= 0.) fBinWidth = 1.;
+    } else if (sname == "ELISSA calib") {
+      eCalibfile = svalue;
     }
   }
 
@@ -538,6 +565,7 @@ void Monitor::FillHist(int size)
   TreeData data(5000000);  // 5000000 = 10ms, enough big for waveform???
 
   double enSpec = 0;
+  double enSpec_calib = 0;
   double poSpec = 0;
 
   bool isValidEn = false;
@@ -577,12 +605,16 @@ void Monitor::FillHist(int size)
       auto ene = fCalFnc[data.Mod][data.Ch]->Eval(data.ChargeLong);
       fHist[data.Mod][data.Ch]->Fill(ene);
       fHistADC[data.Mod][data.Ch]->Fill(data.ChargeLong);
+      
+
+      fHistADC_calib[data.Mod][data.Ch]->Fill(static_cast<double>(data.ChargeLong)*calibEnSpectre_a + calibEnSpectre_b);
+
       fEventCounter[data.Mod][data.Ch]++;
 
       if(data.Ch % 2 == 0){
 
-        poSpec = data.ChargeLong;
-        enSpec = data.ChargeLong;
+        poSpec = static_cast<double>(data.ChargeLong);
+        enSpec = static_cast<double>(data.ChargeLong);
         isValidEn = true;
         isValidPo = true;
 
@@ -590,11 +622,13 @@ void Monitor::FillHist(int size)
 
         enSpec += data.ChargeLong;
         poSpec = (poSpec - data.ChargeLong)/(poSpec + data.ChargeLong);
+        enSpec_calib = enSpec * calibEnSpectre_a + calibEnSpectre_b;
         
 
         if(isValidEn){
 
           fHistEnSp[data.Mod][data.Ch/2]->Fill(enSpec);
+          fHistEnSp_calib[data.Mod][data.Ch/2]->Fill(enSpec_calib);
           isValidEn = false;
 
         }
@@ -632,12 +666,22 @@ void Monitor::ResetHists()
     }
   }
 
+  for (auto &&brd : fHistADC_calib) {
+    for (auto &&ch : brd) {
+      ch->Reset();
+    }
+  }
   for (auto &&brd : fHistEnSp) {
     for (auto &&gr : brd) {
       gr->Reset();
     }
   }
   for (auto &&brd : fHistPoSp) {
+    for (auto &&gr : brd) {
+      gr->Reset();
+    }
+  }
+  for (auto &&brd : fHistEnSp_calib) {
     for (auto &&gr : brd) {
       gr->Reset();
     }
@@ -719,6 +763,58 @@ void Monitor::UploadEventRate(int timeDuration)
     }
   }
 }
+
+
+
+void Monitor::read_cfg()
+{
+
+  std::ifstream conf_file(eCalibfile.c_str());
+  if(!conf_file.is_open()){
+      std::cerr<<"Failed to open config file "<<eCalibfile<<std::endl;
+  }else{
+      std::cout<<"File opened successfully "<<eCalibfile<<std::endl;
+  }
+
+
+  nlohmann::json conf_data;
+  bool has_exception = false;
+
+
+  try
+  {
+      conf_data = nlohmann::json::parse(conf_file);
+  }
+  catch(nlohmann::json::parse_error &ex)
+  {
+      has_exception = true;
+      std::cerr<<"Parse error at byte "<<ex.byte<<std::endl;
+  }
+
+
+  if(has_exception == false){
+        
+    calibSpectre_a = stod(conf_data["calibSpectre_a"].get<std::string>());
+    calibSpectre_b = stod(conf_data["calibSpectre_b"].get<std::string>());
+    calibEnSpectre_a = stod(conf_data["calibEnSpectre_a"].get<std::string>());
+    calibEnSpectre_b = stod(conf_data["calibEnSpectre_b"].get<std::string>());
+
+
+    }else{
+        std::cerr<<"Coud not set parameters due to exception"<<std::endl;
+    }
+
+
+
+
+
+
+
+
+}
+
+
+
 
 extern "C" {
 void MonitorInit(RTC::Manager *manager)

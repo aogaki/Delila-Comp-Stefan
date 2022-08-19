@@ -25,6 +25,8 @@
 #include <string>
 #include <vector>
 
+#include <nlohmann/json.hpp>
+
 // #include "../../TDigiTES/include/TreeData.h"
 #include "../include/TreeData.h"
 #include "DaqComponentBase.h"
@@ -83,10 +85,14 @@ class Monitor : public DAQMW::DaqComponentBase
   std::array<std::array<std::unique_ptr<TH1D>, kgChs>, kgMods> fHistADC;
   std::array<std::array<std::unique_ptr<TGraph>, kgChs>, kgMods> fWaveform;
 
+  //calibrated spectrum
+  std::array<std::array<std::unique_ptr<TH1D>, kgChs>, kgMods> fHistADC_calib;
   //energy spectrum
   std::array<std::array<std::unique_ptr<TH1D>, kgChs/2>, kgMods> fHistEnSp;
   //position spectrum
   std::array<std::array<std::unique_ptr<TH1D>, kgChs/2>, kgMods> fHistPoSp;
+  //energy spectrum calibrated
+  std::array<std::array<std::unique_ptr<TH1D>, kgChs/2>, kgMods> fHistEnSp_calib;
 
 
 
@@ -121,7 +127,28 @@ class Monitor : public DAQMW::DaqComponentBase
 
   // Reset Histograms
   void ResetHists();
+
+
+  std::string eCalibfile;
+  double calibSpectre_a;
+  double calibSpectre_b;
+  double calibEnSpectre_a;
+  double calibEnSpectre_b;
+
+  //read config file
+  void read_cfg();
+
+
+
 };
+
+
+
+
+
+
+
+
 
 extern "C" {
 void MonitorInit(RTC::Manager *manager);
