@@ -215,7 +215,7 @@ int Monitor::daq_configure()
         fin >> mod >> ch >> p0 >> p1;
         if (fin.eof()) break;
 
-        std::cout << mod << " " << ch << " " << p0 << " " << p1 << std::endl;
+        //std::cout << mod << " " << ch << " " << p0 << " " << p1 << std::endl;
         if (mod >= 0 && mod < kgMods && ch >= 0 && ch < kgChs) {
           TString fncName = Form("fnc%02d_%02d", mod, ch);
           fCalFnc[mod][ch].reset(new TF1(fncName, "pol1"));
@@ -242,14 +242,12 @@ int Monitor::daq_configure()
       fHist[iBrd][iCh]->SetXTitle("[keV]");
 
       histName = Form("ADC%02d_%02d", iBrd, iCh);
-      fHistADC[iBrd][iCh].reset(
-          new TH1D(histName, histTitle, 30000, 0.5, 30000.5));
+      fHistADC[iBrd][iCh].reset(new TH1D(histName, histTitle, 30000, 0.5, 30000.5));
       fHistADC[iBrd][iCh]->SetXTitle("ADC channel");
 
 
       histName = Form("ADC_calib%02d_%02d", iBrd, iCh);
-      fHistADC_calib[iBrd][iCh].reset(
-          new TH1D(histName, histTitle, 30000, 0.5, 30000.5));
+      fHistADC_calib[iBrd][iCh].reset(new TH1D(histName, histTitle, 30000, 0.5, 30000.5));
       fHistADC_calib[iBrd][iCh]->SetXTitle("ADC channel calibrated");
 
 
@@ -284,12 +282,82 @@ int Monitor::daq_configure()
 
   }
 
+  std::cout<<"Before for det"<<std::endl;
+
+  for(auto iDet = 0; iDet < kgDet; iDet++){
+
+    TString histName;
+    TString histTitle;
+
+
+
+    for(auto iSeg = 0; iSeg < kgSeg; iSeg++){
+
+
+/*     TString histName = Form("histdet%02d_seg%02d", iDet, iSeg);
+      TString histTitle = Form("hist for det %02d segment %02d", iDet, iSeg);
+
+
+      fHistDet[iDet][iSeg].reset(new TH2D(histName, histTitle,
+                (Int_t)100, (Axis_t)0, (Axis_t)1000, (Int_t)100, (Axis_t)0, (Axis_t)1000));         
+      fHistDet[iDet][iSeg]->SetXTitle("Histogram for a detector segment"); */
+
+      histName = Form("histdetRAW%02d_seg%02d", iDet, iSeg);
+      histTitle = Form("hist for det %02d segment %02d", iDet, iSeg);
+
+      fHistRaw_l[iDet][iSeg].reset(new TH1D(histName, histTitle, 30000, 0.5, 30000.5));
+      fHistRaw_l[iDet][iSeg]->SetTitle("RAW histogram for detector segment");
+
+      histName = Form("histdetCAL%02d_seg%02d", iDet, iSeg);
+      fHistCal_l[iDet][iSeg].reset(new TH1D(histName, histTitle, 30000, 0.5, 30000.5));
+      fHistCal_l[iDet][iSeg]->SetTitle("CAL histogram for detector segment");
+
+      if(iDet != (kgDet - 1)){
+
+        histTitle = Form("spectrum for det %02d segment %02d", iDet, iSeg);
+
+        histName = Form("enspRAW%02d_seg%02d", iDet, iSeg);
+        fEnSpRaw_e[iDet][iSeg].reset(new TH1D(histName, histTitle, 30000, 0.5, 30000.5));
+        fEnSpRaw_e[iDet][iSeg]->SetTitle("RAW en sp for detector segment");
+
+        histName = Form("posp%02d_seg%02d", iDet, iSeg);
+        fPoSp_e[iDet][iSeg].reset(new TH1D(histName, histTitle, 30000, -1, 1));
+        fPoSp_e[iDet][iSeg]->SetTitle("Position sp for detector segment");
+
+        histName = Form("enspCAL%02d_seg%02d", iDet, iSeg);
+        fEnSpCal_e[iDet][iSeg].reset(new TH1D(histName, histTitle, 30000, 0.5, 30000.5));
+        fEnSpCal_e[iDet][iSeg]->SetTitle("CAL en sp for detector segment");
+
+      }
+
+
+    }
+
+    histTitle = Form("2D hist for mod %02d", iDet);
+    histName = Form("h2d%02d", iDet);
+    fHistDet_l[iDet].reset(new TH2D(histName, histTitle,
+                (Int_t)12, (Axis_t)0, (Axis_t)12, (Int_t)100, (Axis_t)0, (Axis_t)1000));
+
+
+  }
+
+  fHistTest_l.reset(new TH2D("Histogram for test on spectrum 5", "Spectrum 5",
+                (Int_t)5, (Axis_t)0, (Axis_t)5, (Int_t)100, (Axis_t)0, (Axis_t)1000));
+
+  std::cout<<"Before reg hists"<<std::endl;
   RegisterHists();
 
   fGrEveRate.reset(new TGraph());
   fGrEveRate->SetNameTitle("GrEveRate", "Total trigger count rate on monitor");
   fGrEveRate->GetYaxis()->SetTitle("[cps]");
   fServ->Register("/", fGrEveRate.get());
+
+
+
+
+
+
+  std::cout<<"fin"<<std::endl;
 
   return 0;
 }
@@ -319,6 +387,45 @@ void Monitor::RegisterHists()
 
 
   }
+
+  for(auto iDet = 0; iDet < kgDet; iDet++){
+
+    fServ->Register("/2D_hists_for_detectors", fHistDet_l[iDet].get());
+    
+
+
+    TString regDirectory = Form("/Det%02d_raw", iDet);
+    for(auto iSeg = 0; iSeg < kgSeg; iSeg++){
+
+        //fServ->Register(regDirectory, fHistDet[iDet][iSeg].get());
+        regDirectory = Form("/Det%02d_raw_LHASA", iDet);
+        fServ->Register(regDirectory, fHistRaw_l[iDet][iSeg].get());
+
+        regDirectory = Form("/Det%02d_cal_LHSSA", iDet);
+        fServ->Register(regDirectory, fHistCal_l[iDet][iSeg].get());
+
+    }
+  }
+
+  for(auto iDet = 0; iDet < kgDet - 1; iDet++){
+    TString regDirectory = Form("/EnSp%02d_raw_ELISSA", iDet);
+    for(auto iSeg = 0; iSeg < kgSeg; iSeg++){
+
+      regDirectory = Form("/EnSp%02d_raw_ELISSA", iDet);
+      fServ->Register(regDirectory, fEnSpRaw_e[iDet][iSeg].get());
+
+      regDirectory = Form("/PoSp%02d_ELISSA", iDet);
+      fServ->Register(regDirectory, fPoSp_e[iDet][iSeg].get());
+
+      regDirectory = Form("/EnSp%02d_cal_ELISSA", iDet);
+      fServ->Register(regDirectory, fEnSpCal_e[iDet][iSeg].get());
+
+
+    }
+  }
+
+  fServ->Register("/Test_detectors", fHistTest_l.get());
+
 }
 
 void Monitor::RegisterDetectors(std::string fileName, std::string calDirName,
@@ -568,8 +675,15 @@ void Monitor::FillHist(int size)
   double enSpec_calib = 0;
   double poSpec = 0;
 
+  double enSpec_e = 0;
+  double enSpec_calib_e = 0;
+  double poSpec_e = 0;
+
   bool isValidEn = false;
   bool isValidPo = false;
+
+  bool isValidEn_e = false;
+  bool isValidPo_e = false;
 
   constexpr int headerSize = 8;
   for (unsigned int i = headerSize; i < size;) {
@@ -611,6 +725,9 @@ void Monitor::FillHist(int size)
 
       fEventCounter[data.Mod][data.Ch]++;
 
+
+      //energy and position spectrum
+
       if(data.Ch % 2 == 0){
 
         poSpec = static_cast<double>(data.ChargeLong);
@@ -641,7 +758,290 @@ void Monitor::FillHist(int size)
         }
 
 
+
+
       }
+
+
+
+
+
+
+
+        //LHASA
+        for(auto iDet = 0; iDet < kgDet; iDet++){
+
+          if((data.Mod >= detStartMod_l[iDet]) && (data.Mod <= detStopMod_l[iDet])){
+
+            
+            if(detStartCh_l[iDet] < detStopCh_l[iDet]){
+
+
+
+              if((data.Ch >= detStartCh_l[iDet]) && (data.Ch <= detStopCh_l[iDet])){
+
+                //LHASA
+                fHistRaw_l[iDet][data.Ch - detStartCh_l[iDet]]->Fill(data.ChargeLong);
+                fHistCal_l[iDet][data.Ch - detStartCh_l[iDet]]->
+                                          Fill(static_cast<double>(data.ChargeLong)*calibEnSpectre_a + calibEnSpectre_b);
+
+
+
+
+                fHistDet_l[iDet]->Fill
+                  (data.Ch - detStartCh_l[iDet], static_cast<double>(data.ChargeLong)*calibEnSpectre_a + calibEnSpectre_b);
+
+
+                if((data.Ch - detStartCh_l[iDet]) == 5){
+                  fHistTest_l->Fill(iDet, static_cast<double>(data.ChargeLong)*calibEnSpectre_a + calibEnSpectre_b);
+                }
+
+
+              }
+
+
+
+
+
+
+            }else if(detStartCh_l[iDet] > detStopCh_l[iDet]){
+
+
+                if((data.Ch >= detStartCh_l[iDet]) && (data.Mod = detStartMod_l[iDet])){
+
+                  //LHASA
+                  fHistRaw_l[iDet][data.Ch - detStartCh_l[iDet]]->Fill(data.ChargeLong);
+                  fHistCal_l[iDet][data.Ch - detStartCh_l[iDet]]->
+                                          Fill(static_cast<double>(data.ChargeLong)*calibEnSpectre_a + calibEnSpectre_b);
+
+
+
+                  fHistDet_l[iDet]->Fill
+                  (data.Ch - detStartCh_l[iDet], static_cast<double>(data.ChargeLong)*calibEnSpectre_a + calibEnSpectre_b);
+
+                  if((data.Ch - detStartCh_l[iDet]) == 5){
+                    fHistTest_l->Fill(iDet, static_cast<double>(data.ChargeLong)*calibEnSpectre_a + calibEnSpectre_b);
+                  }      
+                
+
+                }else if((data.Ch <= detStopCh_l[iDet]) && (data.Mod = detStopMod_l[iDet])){
+
+
+                  //LHASA
+                  fHistRaw_l[iDet][data.Ch + (12-detStartCh_l[iDet])]->Fill(data.ChargeLong);
+                  fHistCal_l[iDet][data.Ch + (12-detStartCh_l[iDet])]->
+                                          Fill(static_cast<double>(data.ChargeLong)*calibEnSpectre_a + calibEnSpectre_b);
+
+
+
+
+                  fHistDet_l[iDet]->Fill
+                  (data.Ch + (12-detStartCh_l[iDet]), static_cast<double>(data.ChargeLong)*calibEnSpectre_a + calibEnSpectre_b);
+
+
+                  if((data.Ch + (12-detStartCh_l[iDet])) == 5){
+                    fHistTest_l->Fill(iDet, static_cast<double>(data.ChargeLong)*calibEnSpectre_a + calibEnSpectre_b);
+                  }
+
+                }
+
+
+
+            }
+
+
+
+          }
+
+
+          
+
+
+
+
+
+
+
+
+        }
+
+
+
+      //ELISSA
+        for(auto iDet = 0; iDet < (kgDet - 1); iDet++){
+
+          if((data.Mod >= detStartMod_e[iDet]) && (data.Mod <= detStopMod_e[iDet])){
+
+            
+            if(detStartCh_e[iDet] < detStopCh_e[iDet]){
+
+
+
+              if((data.Ch >= detStartCh_e[iDet]) && (data.Ch <= detStopCh_e[iDet])){
+
+                //ELISSA
+                if(iDet != (kgDet -1)){
+
+                  if(data.Ch % 2 ==0){
+
+                    poSpec_e = static_cast<double>(data.ChargeLong);
+                    enSpec_e = static_cast<double>(data.ChargeLong);
+                    isValidEn_e = true;
+                    isValidPo_e = true;
+
+
+                  }else{
+
+                    enSpec_e += data.ChargeLong;
+                    poSpec_e = (poSpec_e - data.ChargeLong)/(poSpec_e + data.ChargeLong);
+                    enSpec_calib_e = enSpec_e * calibEnSpectre_a + calibEnSpectre_b;
+
+                    if(isValidEn_e){
+
+                      fEnSpRaw_e[iDet][(data.Ch - detStartCh_e[iDet])/2]->Fill(enSpec_e);
+                      fEnSpCal_e[iDet][(data.Ch - detStartCh_e[iDet])/2]->Fill(enSpec_calib_e);
+                      isValidEn_e = false;
+
+                    }
+
+                    if(isValidPo_e){
+
+                      fPoSp_e[iDet][(data.Ch - detStartCh_e[iDet])/2]->Fill(poSpec_e);
+                      isValidPo_e = false;
+
+                    }
+
+                  }
+
+                }
+
+
+              }
+
+
+
+
+
+
+            }else if(detStartCh_e[iDet] > detStopCh_e[iDet]){
+
+
+                if((data.Ch >= detStartCh_e[iDet]) && (data.Mod = detStartMod_e[iDet])){
+
+              
+                  //ELISSA
+                  if(iDet != (kgDet -1)){
+
+                    if(data.Ch % 2 ==0){
+
+                      poSpec_e = static_cast<double>(data.ChargeLong);
+                      enSpec_e = static_cast<double>(data.ChargeLong);
+                      isValidEn_e = true;
+                      isValidPo_e = true;
+
+
+                    }else{
+
+                      enSpec_e += data.ChargeLong;
+                      poSpec_e = (poSpec_e - data.ChargeLong)/(poSpec_e + data.ChargeLong);
+                      enSpec_calib_e = enSpec_e * calibEnSpectre_a + calibEnSpectre_b;
+
+                      if(isValidEn_e){
+
+                        fEnSpRaw_e[iDet][(data.Ch - detStartCh_e[iDet])/2]->Fill(enSpec_e);
+                        fEnSpCal_e[iDet][(data.Ch - detStartCh_e[iDet])/2]->Fill(enSpec_calib_e);
+                        isValidEn_e = false;
+
+                      }
+
+                      if(isValidPo_e){
+
+                        fPoSp_e[iDet][(data.Ch - detStartCh_e[iDet])/2]->Fill(poSpec_e);
+                        isValidPo_e = false;
+
+                      }
+
+                    }
+
+                  }
+
+
+                }else if((data.Ch <= detStopCh_e[iDet]) && (data.Mod = detStopMod_e[iDet])){
+
+
+
+                  //ELISSA
+                  if(iDet != (kgDet -1)){
+
+                    if(data.Ch % 2 ==0){
+
+                      poSpec_e = static_cast<double>(data.ChargeLong);
+                      enSpec_e = static_cast<double>(data.ChargeLong);
+                      isValidEn_e = true;
+                      isValidPo_e = true;
+
+
+                    }else{
+
+                      enSpec_e += data.ChargeLong;
+                      poSpec_e = (poSpec_e - data.ChargeLong)/(poSpec_e + data.ChargeLong);
+                      enSpec_calib_e = enSpec_e * calibEnSpectre_a + calibEnSpectre_b;
+
+                      if(isValidEn_e){
+
+                        fEnSpRaw_e[iDet][(data.Ch + (12-detStartCh_e[iDet]))/2]->Fill(enSpec_e);
+                        fEnSpCal_e[iDet][(data.Ch + (12-detStartCh_e[iDet]))/2]->Fill(enSpec_calib_e);
+                        isValidEn_e = false;
+
+                      }
+
+                      if(isValidPo_e){
+
+                        fPoSp_e[iDet][(data.Ch + (12-detStartCh_e[iDet]))/2]->Fill(poSpec_e);
+                        isValidPo_e = false;
+
+                      }
+
+                    }
+
+                  }
+
+                }
+
+
+
+            }
+
+
+
+          }
+
+
+          
+
+
+
+
+
+
+
+
+        }
+
+ 
+
+
+
+
+
+
+
+
+ 
+
+
+
+
 
 
       for (auto iPoint = 0; iPoint < data.RecordLength; iPoint++)
@@ -686,6 +1086,36 @@ void Monitor::ResetHists()
       gr->Reset();
     }
   }
+  for (auto &&det : fHistRaw_l){
+    for(auto &&seg : det){
+      seg->Reset();
+    }
+  }
+  for (auto &&det : fHistCal_l){
+    for(auto &&seg : det){
+      seg->Reset();
+    }
+  }
+  for (auto &&det : fEnSpRaw_e){
+    for(auto &&seg : det){
+      seg->Reset();
+    }
+  }
+  for (auto &&det : fPoSp_e){
+    for(auto &&seg : det){
+      seg->Reset();
+    }
+  }
+  for (auto &&det : fEnSpCal_e){
+    for(auto &&seg : det){
+      seg->Reset();
+    }
+  }
+   for (auto &&det : fHistDet_l){
+    det->Reset();
+  }
+
+  fHistTest_l->Reset();
 
 }
 
@@ -769,6 +1199,8 @@ void Monitor::UploadEventRate(int timeDuration)
 void Monitor::read_cfg()
 {
 
+  
+
   std::ifstream conf_file(eCalibfile.c_str());
   if(!conf_file.is_open()){
       std::cerr<<"Failed to open config file "<<eCalibfile<<std::endl;
@@ -799,6 +1231,87 @@ void Monitor::read_cfg()
     calibEnSpectre_a = stod(conf_data["calibEnSpectre_a"].get<std::string>());
     calibEnSpectre_b = stod(conf_data["calibEnSpectre_b"].get<std::string>());
 
+    std::string currDev;
+
+    for(auto iDet = 0; iDet < kgDet; iDet++){
+      currDev = "startModDet_l" + std::to_string(iDet);
+      if(conf_data.contains(currDev.c_str())){
+        detStartMod_l[iDet] = stoi(conf_data[currDev.c_str()].get<std::string>());
+      }
+
+      currDev = "stopModDet_l" + std::to_string(iDet);
+      if(conf_data.contains(currDev.c_str())){
+        detStopMod_l[iDet] = stoi(conf_data[currDev.c_str()].get<std::string>());
+      }
+      
+
+      currDev = "startChDet_l" + std::to_string(iDet);
+      if(conf_data.contains(currDev.c_str())){
+        detStartCh_l[iDet] = stoi(conf_data[currDev.c_str()].get<std::string>());
+      }
+
+
+      currDev = "stopChDet_l" + std::to_string(iDet);
+      if(conf_data.contains(currDev.c_str())){
+        detStopCh_l[iDet] = stoi(conf_data[currDev.c_str()].get<std::string>());
+      }
+
+
+
+      if(iDet != (kgDet - 1)){
+
+        currDev = "startModDet_e" + std::to_string(iDet);
+        if(conf_data.contains(currDev.c_str())){
+          detStartMod_e[iDet] = stoi(conf_data[currDev.c_str()].get<std::string>());
+        }
+
+        currDev = "stopModDet_e" + std::to_string(iDet);
+        if(conf_data.contains(currDev.c_str())){
+          detStopMod_e[iDet] = stoi(conf_data[currDev.c_str()].get<std::string>());
+        }
+        
+
+        currDev = "startChDet_e" + std::to_string(iDet);
+        if(conf_data.contains(currDev.c_str())){
+          detStartCh_e[iDet] = stoi(conf_data[currDev.c_str()].get<std::string>());
+        }
+
+
+        currDev = "stopChDet_l" + std::to_string(iDet);
+        if(conf_data.contains(currDev.c_str())){
+          detStopCh_e[iDet] = stoi(conf_data[currDev.c_str()].get<std::string>());
+        }
+
+      }
+
+
+
+
+
+
+
+    }
+
+    for (auto iBrd = 0; iBrd < kgMods; iBrd++) {
+      for (auto iCh = 0; iCh < kgChs; iCh++) {
+
+        currDev = "a_mod" + std::to_string(iBrd) + "_ch" + std::to_string(iCh);
+        if(conf_data.contains(currDev.c_str())){
+          linArg_a[iBrd][iCh] = stod(conf_data[currDev.c_str()].get<std::string>());
+        }else{
+          linArg_a[iBrd][iCh] = 0;
+        }
+
+        currDev = "b_mod" + std::to_string(iBrd) + "_ch" + std::to_string(iCh);
+        if(conf_data.contains(currDev.c_str())){
+          linArg_b[iBrd][iCh] = stod(conf_data[currDev.c_str()].get<std::string>());
+        }else{
+          linArg_b[iBrd][iCh] = 0;
+        }
+
+      }
+    }
+
 
     }else{
         std::cerr<<"Coud not set parameters due to exception"<<std::endl;
@@ -807,7 +1320,7 @@ void Monitor::read_cfg()
 
 
 
-
+  std::cout<<"End read cfg file"<<std::endl;
 
 
 

@@ -12,6 +12,7 @@
 
 #include <TCanvas.h>
 #include <TF1.h>
+#include <TH2.h>
 #include <TGraph.h>
 #include <TH1.h>
 #include <THttpServer.h>
@@ -80,6 +81,13 @@ class Monitor : public DAQMW::DaqComponentBase
   static constexpr int kgMods = 8;
   static constexpr int kgChs = 32;
   static constexpr int kgGrp = kgChs/2;
+  static constexpr int kgDet = 5;
+  static constexpr int kgSeg = 12;
+
+  std::array<std::array<double, kgChs>, kgMods> linArg_a;
+  std::array<std::array<double, kgChs>, kgMods> linArg_b;
+
+
 
   std::array<std::array<std::unique_ptr<TH1D>, kgChs>, kgMods> fHist;
   std::array<std::array<std::unique_ptr<TH1D>, kgChs>, kgMods> fHistADC;
@@ -88,11 +96,31 @@ class Monitor : public DAQMW::DaqComponentBase
   //calibrated spectrum
   std::array<std::array<std::unique_ptr<TH1D>, kgChs>, kgMods> fHistADC_calib;
   //energy spectrum
-  std::array<std::array<std::unique_ptr<TH1D>, kgChs/2>, kgMods> fHistEnSp;
+  std::array<std::array<std::unique_ptr<TH1D>, kgGrp>, kgMods> fHistEnSp;
   //position spectrum
-  std::array<std::array<std::unique_ptr<TH1D>, kgChs/2>, kgMods> fHistPoSp;
+  std::array<std::array<std::unique_ptr<TH1D>, kgGrp>, kgMods> fHistPoSp;
   //energy spectrum calibrated
-  std::array<std::array<std::unique_ptr<TH1D>, kgChs/2>, kgMods> fHistEnSp_calib;
+  std::array<std::array<std::unique_ptr<TH1D>, kgGrp>, kgMods> fHistEnSp_calib;
+
+
+  //2D hists
+  //5 histograms with 12 values for the 5 detectors
+  std::array<std::unique_ptr<TH2D>, kgDet> fHistDet_l;
+  //1 histogram for a channel for test
+  std::unique_ptr<TH2D> fHistTest_l;
+
+
+
+  //LHASA folders
+  std::array<std::array<std::unique_ptr<TH1D>, kgSeg>, kgDet> fHistRaw_l;
+  std::array<std::array<std::unique_ptr<TH1D>, kgSeg>, kgDet> fHistCal_l;
+
+  //ELISSA folders
+  std::array<std::array<std::unique_ptr<TH1D>, kgSeg>, kgDet-1> fEnSpRaw_e;
+  std::array<std::array<std::unique_ptr<TH1D>, kgSeg>, kgDet-1> fPoSp_e;
+  std::array<std::array<std::unique_ptr<TH1D>, kgSeg>, kgDet-1> fEnSpCal_e;
+
+  
 
 
 
@@ -118,6 +146,11 @@ class Monitor : public DAQMW::DaqComponentBase
   std::array<std::array<std::unique_ptr<TF1>, kgChs>, kgMods> fCalFnc;
   double fBinWidth;
 
+
+
+
+
+
   // ASCII Dump
   void DumpHists();
   // std::unique_ptr<CURL> fCurl;
@@ -128,12 +161,22 @@ class Monitor : public DAQMW::DaqComponentBase
   // Reset Histograms
   void ResetHists();
 
-
+  //for configuration
   std::string eCalibfile;
   double calibSpectre_a;
   double calibSpectre_b;
   double calibEnSpectre_a;
   double calibEnSpectre_b;
+  
+  std::array<int, kgDet> detStartMod_l;
+  std::array<int, kgDet> detStopMod_l;
+  std::array<int, kgDet> detStartCh_l;
+  std::array<int, kgDet> detStopCh_l;
+
+  std::array<int, kgDet> detStartMod_e;
+  std::array<int, kgDet> detStopMod_e;
+  std::array<int, kgDet> detStartCh_e;
+  std::array<int, kgDet> detStopCh_e;
 
   //read config file
   void read_cfg();
