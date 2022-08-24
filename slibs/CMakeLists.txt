@@ -20,6 +20,7 @@ foreach(source IN LISTS sources)
     set(lib_name "")
     string(APPEND lib_name "_" ${name})
     add_library(${lib_name} SHARED ${source} ${headers} ${vme_controller} ${vme_device})
+    target_link_libraries(${lib_name} CAENComm)
     install(TARGETS ${lib_name} DESTINATION ${PROJECT_SOURCE_DIR}) # Not making lib directory
 
     # target_link_libraries(nameless ${CMAKE_DL_LIBS})
