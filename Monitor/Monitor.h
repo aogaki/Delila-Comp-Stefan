@@ -165,8 +165,6 @@ class Monitor : public DAQMW::DaqComponentBase
   std::string eCalibfile;
   double calibSpectre_a;
   double calibSpectre_b;
-  double calibEnSpectre_a;
-  double calibEnSpectre_b;
   
   std::array<int, kgDet> detStartMod_l;
   std::array<int, kgDet> detStopMod_l;

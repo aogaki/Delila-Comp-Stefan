@@ -721,7 +721,7 @@ void Monitor::FillHist(int size)
       fHistADC[data.Mod][data.Ch]->Fill(data.ChargeLong);
       
 
-      fHistADC_calib[data.Mod][data.Ch]->Fill(static_cast<double>(data.ChargeLong)*calibEnSpectre_a + calibEnSpectre_b);
+      fHistADC_calib[data.Mod][data.Ch]->Fill(static_cast<double>(data.ChargeLong)* linArg_a[data.Mod][data.Ch] + linArg_b[data.Mod][data.Ch]);
 
       fEventCounter[data.Mod][data.Ch]++;
 
@@ -739,7 +739,7 @@ void Monitor::FillHist(int size)
 
         enSpec += data.ChargeLong;
         poSpec = (poSpec - data.ChargeLong)/(poSpec + data.ChargeLong);
-        enSpec_calib = enSpec * calibEnSpectre_a + calibEnSpectre_b;
+        enSpec_calib = enSpec * linArg_a[data.Mod][data.Ch] + linArg_b[data.Mod][data.Ch];
         
 
         if(isValidEn){
@@ -783,17 +783,17 @@ void Monitor::FillHist(int size)
                 //LHASA
                 fHistRaw_l[iDet][data.Ch - detStartCh_l[iDet]]->Fill(data.ChargeLong);
                 fHistCal_l[iDet][data.Ch - detStartCh_l[iDet]]->
-                                          Fill(static_cast<double>(data.ChargeLong)*calibEnSpectre_a + calibEnSpectre_b);
+                                          Fill(static_cast<double>(data.ChargeLong) * linArg_a[data.Mod][data.Ch] + linArg_b[data.Mod][data.Ch]);
 
 
 
 
                 fHistDet_l[iDet]->Fill
-                  (data.Ch - detStartCh_l[iDet], static_cast<double>(data.ChargeLong)*calibEnSpectre_a + calibEnSpectre_b);
+                  (data.Ch - detStartCh_l[iDet], static_cast<double>(data.ChargeLong) * linArg_a[data.Mod][data.Ch] + linArg_b[data.Mod][data.Ch]);
 
 
                 if((data.Ch - detStartCh_l[iDet]) == 5){
-                  fHistTest_l->Fill(iDet, static_cast<double>(data.ChargeLong)*calibEnSpectre_a + calibEnSpectre_b);
+                  fHistTest_l->Fill(iDet, static_cast<double>(data.ChargeLong) * linArg_a[data.Mod][data.Ch] + linArg_b[data.Mod][data.Ch]);
                 }
 
 
@@ -812,15 +812,15 @@ void Monitor::FillHist(int size)
                   //LHASA
                   fHistRaw_l[iDet][data.Ch - detStartCh_l[iDet]]->Fill(data.ChargeLong);
                   fHistCal_l[iDet][data.Ch - detStartCh_l[iDet]]->
-                                          Fill(static_cast<double>(data.ChargeLong)*calibEnSpectre_a + calibEnSpectre_b);
+                                          Fill(static_cast<double>(data.ChargeLong) * linArg_a[data.Mod][data.Ch] + linArg_b[data.Mod][data.Ch]);
 
 
 
                   fHistDet_l[iDet]->Fill
-                  (data.Ch - detStartCh_l[iDet], static_cast<double>(data.ChargeLong)*calibEnSpectre_a + calibEnSpectre_b);
+                  (data.Ch - detStartCh_l[iDet], static_cast<double>(data.ChargeLong) * linArg_a[data.Mod][data.Ch] + linArg_b[data.Mod][data.Ch]);
 
                   if((data.Ch - detStartCh_l[iDet]) == 5){
-                    fHistTest_l->Fill(iDet, static_cast<double>(data.ChargeLong)*calibEnSpectre_a + calibEnSpectre_b);
+                    fHistTest_l->Fill(iDet, static_cast<double>(data.ChargeLong) * linArg_a[data.Mod][data.Ch] + linArg_b[data.Mod][data.Ch]);
                   }      
                 
 
@@ -830,17 +830,17 @@ void Monitor::FillHist(int size)
                   //LHASA
                   fHistRaw_l[iDet][data.Ch + (12-detStartCh_l[iDet])]->Fill(data.ChargeLong);
                   fHistCal_l[iDet][data.Ch + (12-detStartCh_l[iDet])]->
-                                          Fill(static_cast<double>(data.ChargeLong)*calibEnSpectre_a + calibEnSpectre_b);
+                                          Fill(static_cast<double>(data.ChargeLong) * linArg_a[data.Mod][data.Ch] + linArg_b[data.Mod][data.Ch]);
 
 
 
 
                   fHistDet_l[iDet]->Fill
-                  (data.Ch + (12-detStartCh_l[iDet]), static_cast<double>(data.ChargeLong)*calibEnSpectre_a + calibEnSpectre_b);
+                  (data.Ch + (12-detStartCh_l[iDet]), static_cast<double>(data.ChargeLong) * linArg_a[data.Mod][data.Ch] + linArg_b[data.Mod][data.Ch]);
 
 
                   if((data.Ch + (12-detStartCh_l[iDet])) == 5){
-                    fHistTest_l->Fill(iDet, static_cast<double>(data.ChargeLong)*calibEnSpectre_a + calibEnSpectre_b);
+                    fHistTest_l->Fill(iDet, static_cast<double>(data.ChargeLong) * linArg_a[data.Mod][data.Ch] + linArg_b[data.Mod][data.Ch]);
                   }
 
                 }
@@ -894,7 +894,7 @@ void Monitor::FillHist(int size)
 
                     enSpec_e += data.ChargeLong;
                     poSpec_e = (poSpec_e - data.ChargeLong)/(poSpec_e + data.ChargeLong);
-                    enSpec_calib_e = enSpec_e * calibEnSpectre_a + calibEnSpectre_b;
+                    enSpec_calib_e = enSpec_e * linArg_a[data.Mod][data.Ch] + linArg_b[data.Mod][data.Ch];
 
                     if(isValidEn_e){
 
@@ -944,7 +944,7 @@ void Monitor::FillHist(int size)
 
                       enSpec_e += data.ChargeLong;
                       poSpec_e = (poSpec_e - data.ChargeLong)/(poSpec_e + data.ChargeLong);
-                      enSpec_calib_e = enSpec_e * calibEnSpectre_a + calibEnSpectre_b;
+                      enSpec_calib_e = enSpec_e * linArg_a[data.Mod][data.Ch] + linArg_b[data.Mod][data.Ch];
 
                       if(isValidEn_e){
 
@@ -985,7 +985,7 @@ void Monitor::FillHist(int size)
 
                       enSpec_e += data.ChargeLong;
                       poSpec_e = (poSpec_e - data.ChargeLong)/(poSpec_e + data.ChargeLong);
-                      enSpec_calib_e = enSpec_e * calibEnSpectre_a + calibEnSpectre_b;
+                      enSpec_calib_e = enSpec_e * linArg_a[data.Mod][data.Ch] + linArg_b[data.Mod][data.Ch];
 
                       if(isValidEn_e){
 
@@ -1228,8 +1228,6 @@ void Monitor::read_cfg()
         
     calibSpectre_a = stod(conf_data["calibSpectre_a"].get<std::string>());
     calibSpectre_b = stod(conf_data["calibSpectre_b"].get<std::string>());
-    calibEnSpectre_a = stod(conf_data["calibEnSpectre_a"].get<std::string>());
-    calibEnSpectre_b = stod(conf_data["calibEnSpectre_b"].get<std::string>());
 
     std::string currDev;
 
@@ -1299,14 +1297,14 @@ void Monitor::read_cfg()
         if(conf_data.contains(currDev.c_str())){
           linArg_a[iBrd][iCh] = stod(conf_data[currDev.c_str()].get<std::string>());
         }else{
-          linArg_a[iBrd][iCh] = 0;
+          linArg_a[iBrd][iCh] = calibSpectre_a;
         }
 
         currDev = "b_mod" + std::to_string(iBrd) + "_ch" + std::to_string(iCh);
         if(conf_data.contains(currDev.c_str())){
           linArg_b[iBrd][iCh] = stod(conf_data[currDev.c_str()].get<std::string>());
         }else{
-          linArg_b[iBrd][iCh] = 0;
+          linArg_b[iBrd][iCh] = calibSpectre_b;
         }
 
       }
