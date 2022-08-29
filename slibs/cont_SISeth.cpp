@@ -3,6 +3,7 @@
 #include<iostream>
 #include<chrono>
 #include<bitset>
+#include<fstream>
 
 #include "../include/includesiseth/project_system_define.h"
 #include "../include/includesiseth/project_interface_define.h"
@@ -13,6 +14,7 @@
 
 //g++ -c -Wall -fPIC -I../include -I../include/includesiseth /home/gant/DELILA-main/Components/include/includesiseth/sis3153ETH_vme_class.cpp  cont_SISeth.cpp -ldl 
 //g++ -shared -o cont_SISeth.so cont_SISeth.o /home/gant/DELILA-main/Components/src/VMEController.o sis3153ETH_vme_class.o -ldl
+
 
 
 
@@ -48,7 +50,21 @@ void SISeth::utilsVMEinit(void)
 {
 
     char ip_addr_str[32];
-    strcpy(ip_addr_str, "192.168.0.198");
+
+    std::ifstream file_data;
+    file_data.open("/home/gant/DELILA-main/Components/slibs/SISip.conf");
+
+    if(!file_data){
+
+        std::cerr<<"Ip file could not be opened"<<std::endl;
+
+    }
+
+    file_data >>ip_addr_str;
+
+    std::cout<<"Ip is "<<ip_addr_str<<std::endl;
+
+    //strcpy(ip_addr_str, "192.168.0.198");
     sis3153eth(&this->sis_crate, ip_addr_str);
     
 }
