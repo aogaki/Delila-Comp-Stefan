@@ -21,6 +21,7 @@ foreach(source IN LISTS sources)
     get_filename_component(name ${source} NAME_WE)
     set(lib_name "")
     string(APPEND lib_name "_" ${name})
+    list(REMOVE_ITEM ${source} "sis3153ETH_vme_class.cpp")
     add_library(${lib_name} SHARED ${source} ${headers} ${vme_controller} ${vme_device} ${sis_vme_class})
     target_link_libraries(${lib_name} CAENComm)
     install(TARGETS ${lib_name} DESTINATION ${PROJECT_SOURCE_DIR}) # Not making lib directory
