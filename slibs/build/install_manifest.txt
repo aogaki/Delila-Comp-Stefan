@@ -1,0 +1,4 @@
+/home/gant/DELILA-main/Components/slibs/lib_cont_2718.so
+/home/gant/DELILA-main/Components/slibs/lib_cont_SISeth.so
+/home/gant/DELILA-main/Components/slibs/lib_dev_MADC32.so
+/home/gant/DELILA-main/Components/slibs/lib_dev_MTDC32.so
